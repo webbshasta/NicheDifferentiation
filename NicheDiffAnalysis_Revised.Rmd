@@ -58,18 +58,27 @@ Summary of behaviors & strata
 df.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
 names(df.summary)
 
+df.summary$AdjustedAgeSex <- factor(df.summary$AdjustedAgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
+
 df.summary <- df.summary %>%
-                    group_by(AgeSexClass) %>%
+                    group_by(AdjustedAgeSex) %>%
                     dplyr::summarise(
+                              FruitScans_mean = mean(FruitScans),
+                              FruitScans_sd = sd(FruitScans),
                               FruitScans = sum(FruitScans),
+                              InvScans_mean = mean(InvScans),
+                              InvScans_sd = sd(InvScans),
                               InvScans = sum(InvScans),
+                              TotalForagingScans_mean = mean(TotalForagingScans),
+                              TotalForagingScans_sd = sd(TotalForagingScans),
                               TotalForagingScans = sum(TotalForagingScans),
+                              TotalScans_mean = mean(TotalScans),
+                              TotalScans_sd = sd(TotalScans),
                               TotalScans = sum(TotalScans)) %>%
                     mutate(ForageProp = TotalForagingScans/TotalScans,
                            FruitProp = FruitScans/TotalForagingScans,
                            InvProp = InvScans/TotalForagingScans) %>%
-                    mutate(OtherProp = 1-(FruitProp+InvProp)) %>%
-                    mutate(OtherFoodScans = TotalForagingScans-(FruitScans + InvScans))
+                    mutate(OtherProp = 1-(FruitProp+InvProp))
 
 write.csv(df.summary, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/behavior.summary.csv")
 
@@ -81,29 +90,75 @@ Support summaries inverterbrate foraging
 support.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv")) 
 names(support.summary)
 
+support.summary$AdjustedAgeSex <- factor(support.summary$AdjustedAgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
+
 support.inv <- support.summary %>%
                drop_na(Smbr) %>%
-               group_by(AgeSexClass) %>%
-               summarise(Ground = sum(GRO),
+               group_by(AdjustedAgeSex) %>%
+               summarise(Ground_min = min(GRO),
+                         Ground_max = max(GRO),
+                         Ground_mean = mean(GRO),
+                         Ground_sd = sd(GRO),
+                         Ground = sum(GRO),
+                         Low_min = min(LOW),
+                         Low_max = max(LOW),
+                         Low_mean = mean(LOW),
+                         Low_sd = sd(LOW),
                          Low = sum(LOW),
+                         Mid_min = min(MID),
+                         Mid_max = max(MID),
+                         Mid_mean = mean(MID),
+                         Mid_sd = sd(MID),
                          Mid = sum(MID),
+                         Upper_min = min(UPP),
+                         Upper_max = max(UPP),
+                         Upper_mean = mean(UPP),
+                         Upper_sd = sd(UPP),
                          Upper = sum(UPP),
+                         TotalInvVertScans_min = min(TotalInvVertScans),
+                         TotalInvVertScans_max = max(TotalInvVertScans),
+                         TotalInvVertScans_mean = mean(TotalInvVertScans),
+                         TotalInvVertScans_sd = sd(TotalInvVertScans),
                          TotalInvVertScans = sum(TotalInvVertScans),
+                         SmBranch_min = min(Smbr),
+                         SmBranch_max = max(Smbr),
+                         SmBranch_mean = mean(Smbr),
+                         SmBranch_sd = sd(Smbr),
                          SmBranch = sum(Smbr),
+                         MdBranch_min = min(Mdbr),
+                         MdBranch_max = max(Mdbr),
+                         MdBranch_mean = mean(Mdbr),
+                         MdBranch_sd = sd(Mdbr),
                          MdBranch = sum(Mdbr),
+                         LgBranch_min = min(Lgbr),
+                         LgBranch_max = max(Lgbr),
+                         LgBranch_mean = mean(Lgbr),
+                         LgBranch_sd = sd(Lgbr),
                          LgBranch = sum(Lgbr),
+                         Hori_min = min(Hori),
+                         Hori_max = max(Hori),
+                         Hori_mean = mean(Hori),
+                         Hori_sd = sd(Hori),
                          Hori = sum(Hori),
+                         Vert_min = min(Vert),
+                         Vert_max = max(Vert),
+                         Vert_mean = mean(Vert),
+                         Vert_sd = sd(Vert),
                          Vert = sum(Vert),
+                         TotalInvSuppScans_min = min(TotalInvSuppScans),
+                         TotalInvSuppScans_max = max(TotalInvSuppScans),
+                         TotalInvSuppScans_mean = mean(TotalInvSuppScans),
+                         TotalInvSuppScans_sd = sd(TotalInvSuppScans),
                          TotalInvSuppScans = sum(TotalInvSuppScans)) %>%
-                mutate(Ground_prop = Ground/TotalInvVertScans,
-                       Low_prop = Low/TotalInvVertScans,
-                       Mid_prop = Mid/TotalInvVertScans,
-                       Upp_prop = Upper/TotalInvVertScans,
-                       Sm_prop = SmBranch/TotalInvSuppScans,
-                       Md_prop = MdBranch/TotalInvSuppScans,
-                       Lg_prop = LgBranch/TotalInvSuppScans,
-                       Hori_prop = Hori/TotalInvSuppScans,
-                       Vert_prop = Vert/TotalInvSuppScans)
+                mutate(Ground_prop = Ground/(Low + Ground + Mid + Upper),
+                       Low_prop = Low/(Low + Ground + Mid + Upper),
+                       Mid_prop = Mid/(Low + Ground + Mid + Upper),
+                       Upp_prop = Upper/(Low + Ground + Mid + Upper),
+                       Sm_prop = SmBranch/(SmBranch + MdBranch + LgBranch),
+                       Md_prop = MdBranch/(SmBranch + MdBranch + LgBranch),
+                       Lg_prop = LgBranch/(SmBranch + MdBranch + LgBranch),
+                       Hori_prop = Hori/(Hori + Vert),
+                       Vert_prop = Vert/(Hori + Vert))
 
 write.csv(support.inv, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/support.inv.summary.csv")
 ```
@@ -113,29 +168,75 @@ Support summaries fruit
 ```{r}
 summary.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv"))
 
+summary.fruit$AdjustedAgeSex <- factor(summary.fruit$AdjustedAgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
+
 support.fruit <- summary.fruit %>%
                drop_na(Smbr) %>%
-               group_by(AgeSexClass) %>%
-               summarise(Ground = sum(GRO),
+               group_by(AdjustedAgeSex) %>%
+               summarise(Ground_min = min(GRO),
+                         Ground_max = max(GRO),
+                         Ground_mean = mean(GRO),
+                         Ground_sd = sd(GRO),
+                         Ground = sum(GRO),
+                         Low_min = min(LOW),
+                         Low_max = max(LOW),
+                         Low_mean = mean(LOW),
+                         Low_sd = sd(LOW),
                          Low = sum(LOW),
+                         Mid_min = min(MID),
+                         Mid_max = max(MID),
+                         Mid_mean = mean(MID),
+                         Mid_sd = sd(MID),
                          Mid = sum(MID),
+                         Upper_min = min(UPP),
+                         Upper_max = max(UPP),
+                         Upper_mean = mean(UPP),
+                         Upper_sd = sd(UPP),
                          Upper = sum(UPP),
+                         TotalFruVertScans_min = min(TotalFruVertScans),
+                         TotalFruVertScans_max = max(TotalFruVertScans),
+                         TotalFruVertScans_mean = mean(TotalFruVertScans),
+                         TotalFruVertScans_sd = sd(TotalFruVertScans),
                          TotalFruVertScans = sum(TotalFruVertScans),
+                         SmBranch_min = min(Smbr),
+                         SmBranch_max = max(Smbr),
+                         SmBranch_mean = mean(Smbr),
+                         SmBranch_sd = sd(Smbr),
                          SmBranch = sum(Smbr),
+                         MdBranch_min = min(Mdbr),
+                         MdBranch_max = max(Mdbr),
+                         MdBranch_mean = mean(Mdbr),
+                         MdBranch_sd = sd(Mdbr),
                          MdBranch = sum(Mdbr),
+                         LgBranch_min = min(Lgbr),
+                         LgBranch_max = max(Lgbr),
+                         LgBranch_mean = mean(Lgbr),
+                         LgBranch_sd = sd(Lgbr),
                          LgBranch = sum(Lgbr),
+                         Hori_min = min(Hori),
+                         Hori_max = max(Hori),
+                         Hori_mean = mean(Hori),
+                         Hori_sd = sd(Hori),
                          Hori = sum(Hori),
+                         Vert_min = min(Vert),
+                         Vert_max = max(Vert),
+                         Vert_mean = mean(Vert),
+                         Vert_sd = sd(Vert),
                          Vert = sum(Vert),
+                         TotalFruSuppScans_min = min(TotalFruSuppScans),
+                         TotalFruSuppScans_max = max(TotalFruSuppScans),
+                         TotalFruSuppScans_mean = mean(TotalFruSuppScans),
+                         TotalFruSuppScans_sd = sd(TotalFruSuppScans),
                          TotalFruSuppScans = sum(TotalFruSuppScans)) %>%
-                mutate(Ground_prop = Ground/TotalFruVertScans,
-                       Low_prop = Low/TotalFruVertScans,
-                       Mid_prop = Mid/TotalFruVertScans,
-                       Upp_prop = Upper/TotalFruVertScans,
-                       Sm_prop = SmBranch/TotalFruSuppScans,
-                       Md_prop = MdBranch/TotalFruSuppScans,
-                       Lg_prop = LgBranch/TotalFruSuppScans,
-                       Hori_prop = Hori/TotalFruSuppScans,
-                       Vert_prop = Vert/TotalFruSuppScans)
+                 mutate(Ground_prop = Ground/(Low + Ground + Mid + Upper),
+                       Low_prop = Low/(Low + Ground + Mid + Upper),
+                       Mid_prop = Mid/(Low + Ground + Mid + Upper),
+                       Upp_prop = Upper/(Low + Ground + Mid + Upper),
+                       Sm_prop = SmBranch/(SmBranch + MdBranch + LgBranch),
+                       Md_prop = MdBranch/(SmBranch + MdBranch + LgBranch),
+                       Lg_prop = LgBranch/(SmBranch + MdBranch + LgBranch),
+                       Hori_prop = Hori/(Hori + Vert),
+                       Vert_prop = Vert/(Hori + Vert))
 
 write.csv(support.fruit, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/support.fruit.summary.csv")
 ```
