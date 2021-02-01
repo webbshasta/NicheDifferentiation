@@ -1,0 +1,1671 @@
+---
+title: "01_06_2020_NicheDiffAnalysis"
+author: "Shasta Webb"
+date: "01/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Niche Differentiation Project
+
+#### Rachel Williamson, Shasta Webb, Amanda Melin
+
+#### 2021
+
+This analysis explores niche differentiation between capuchin sex and age classes.
+
+##### Loading required packages and dependencies
+
+```{r, echo = FALSE, results = 'hide', message=FALSE}
+library(readr); library(dplyr); library(car); library(ggplot2); library(lme4);  library(car); library(emmeans); library(multcomp); library(multcompView); library(gridExtra); library(lubridate); library(fuzzyjoin); library(ggpubr); library(glmmTMB); library(performance); library(effects); library(sjPlot)
+```
+
+##### Load required functions
+
+```{r}
+mode <- function(x) { names(which.max(table(x))) }
+```
+
+##### Reading in rotation table
+
+```{r}
+rotationTable <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/rotationDate16_17.csv"))
+rotationTable <- distinct(rotationTable)
+```
+
+##### Reading in birth date data
+
+```{r}
+birthDate <-  as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/Birthdate_SSR.csv"))
+```
+
+##### Reading in monthly fruit biomass data
+
+```{r}
+fruitBiomass <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/MonthlyFruitBiomass_copy.csv"))
+
+#creating a month/year column for left joining to behavioural data
+fruitBiomass$Month_Yr <- format(as.Date(fruitBiomass$YearOf), "%Y-%m")
+```
+
+Summary of behaviors & strata
+
+```{r}
+#summaries of foraging behavior
+df.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
+names(df.summary)
+
+df.summary <- df.summary %>%
+                    group_by(AgeSexClass) %>%
+                    dplyr::summarise(
+                              FruitScans = sum(FruitScans),
+                              InvScans = sum(InvScans),
+                              TotalForagingScans = sum(TotalForagingScans),
+                              TotalScans = sum(TotalScans)) %>%
+                    mutate(ForageProp = TotalForagingScans/TotalScans,
+                           FruitProp = FruitScans/TotalForagingScans,
+                           InvProp = InvScans/TotalForagingScans) %>%
+                    mutate(OtherProp = 1-(FruitProp+InvProp)) %>%
+                    mutate(OtherFoodScans = TotalForagingScans-(FruitScans + InvScans))
+
+write.csv(df.summary, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/behavior.summary.csv")
+
+```
+
+Support summaries inverterbrate foraging
+
+```{r}
+support.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv")) 
+names(support.summary)
+
+support.inv <- support.summary %>%
+               drop_na(Smbr) %>%
+               group_by(AgeSexClass) %>%
+               summarise(Ground = sum(GRO),
+                         Low = sum(LOW),
+                         Mid = sum(MID),
+                         Upper = sum(UPP),
+                         TotalInvVertScans = sum(TotalInvVertScans),
+                         SmBranch = sum(Smbr),
+                         MdBranch = sum(Mdbr),
+                         LgBranch = sum(Lgbr),
+                         Hori = sum(Hori),
+                         Vert = sum(Vert),
+                         TotalInvSuppScans = sum(TotalInvSuppScans)) %>%
+                mutate(Ground_prop = Ground/TotalInvVertScans,
+                       Low_prop = Low/TotalInvVertScans,
+                       Mid_prop = Mid/TotalInvVertScans,
+                       Upp_prop = Upper/TotalInvVertScans,
+                       Sm_prop = SmBranch/TotalInvSuppScans,
+                       Md_prop = MdBranch/TotalInvSuppScans,
+                       Lg_prop = LgBranch/TotalInvSuppScans,
+                       Hori_prop = Hori/TotalInvSuppScans,
+                       Vert_prop = Vert/TotalInvSuppScans)
+
+write.csv(support.inv, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/support.inv.summary.csv")
+```
+
+Support summaries fruit
+
+```{r}
+summary.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv"))
+
+support.fruit <- summary.fruit %>%
+               drop_na(Smbr) %>%
+               group_by(AgeSexClass) %>%
+               summarise(Ground = sum(GRO),
+                         Low = sum(LOW),
+                         Mid = sum(MID),
+                         Upper = sum(UPP),
+                         TotalFruVertScans = sum(TotalFruVertScans),
+                         SmBranch = sum(Smbr),
+                         MdBranch = sum(Mdbr),
+                         LgBranch = sum(Lgbr),
+                         Hori = sum(Hori),
+                         Vert = sum(Vert),
+                         TotalFruSuppScans = sum(TotalFruSuppScans)) %>%
+                mutate(Ground_prop = Ground/TotalFruVertScans,
+                       Low_prop = Low/TotalFruVertScans,
+                       Mid_prop = Mid/TotalFruVertScans,
+                       Upp_prop = Upper/TotalFruVertScans,
+                       Sm_prop = SmBranch/TotalFruSuppScans,
+                       Md_prop = MdBranch/TotalFruSuppScans,
+                       Lg_prop = LgBranch/TotalFruSuppScans,
+                       Hori_prop = Hori/TotalFruSuppScans,
+                       Vert_prop = Vert/TotalFruSuppScans)
+
+write.csv(support.fruit, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/support.fruit.summary.csv")
+```
+
+
+#### Hypothesis 1: Individuals will differ in behavior based on their ability to access foods. We predict that smaller individuals, i.e. juveniles and females, will spend: 1) more time foraging for soft than hard-to-access fruits, and 2) for gleaned invertebrates versus invertebrates extracted from within substrates.
+
+##### Prediction 1: Smaller individuals, i.e. juveniles and females, will spend more time foraging for soft than hard-to-access fruits
+
+Reading in individual scan data across all behaviours 
+
+```{r}
+df.overallStates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
+
+df.overallStates$Group <- as.factor(df.overallStates$Group)
+df.overallStates$AdjustedAge <- as.factor(df.overallStates$AdjustedAge)
+df.overallStates$AdjustedAgeSex <- as.factor(df.overallStates$AdjustedAgeSex)
+df.overallStates$Month_Yr <- format(as.Date(df.overallStates$Date), "%Y-%m") #adding a month-year column
+df.overallStates$Year <- format(as.Date(df.overallStates$Date), "%Y") #adding a year column
+df.overallStates$Sex.Class <- factor(df.overallStates$Sex.Class, levels = c("female", "male"))
+```
+
+Adding fruit biomass data to df.overallStates
+
+```{r}
+df.overallStates <- left_join(df.overallStates, fruitBiomass, by = "Month_Yr")
+```
+
+Summary of all data collected, pre-filtering
+
+```{r}
+sum(df.overallStates$TotalScans) #30744 foraging scans collected
+length(unique(df.overallStates$Animal)) #113 animals
+length(unique(df.overallStates$Date)) #190 contact days
+```
+
+Z-transform ecological variables, join by rotation, summarize by rotation
+
+```{r}
+df.overallStates <- df.overallStates %>%
+                    left_join(., rotationTable, by = "Date") %>% #joining roation so we can group_by later
+                    mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+df.overallStates <- df.overallStates %>%
+                    group_by(Rotation, Animal) %>%
+                    dplyr::summarise(Group = unique(Group),
+                              Month_Yr = mode(Month_Yr),
+                              AgeClass = mode(AdjustedAge),
+                              SexClass = unique(Sex.Class),
+                              MeanTempMax = mean(TemperatureMax),
+                              MeanTempMin = mean(TemperatureMin),
+                              MeanRainfall = mean(Rainfall),
+                              MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                              FruitScans = sum(FruitScans),
+                              TotalForagingScans = sum(TotalForagingScans)) 
+
+df.overallStates <- filter(df.overallStates, TotalForagingScans > 0)
+```
+
+Summary of data post-filtering
+
+```{r}
+sum(df.overallStates$TotalForagingScans) #15879 foraging scans collected
+length(unique(df.overallStates$Animal)) #107 animals
+```
+
+Visualizing fruit foraging out of all foraging
+
+```{r}
+df.overallStates$AgeClass <- factor(df.overallStates$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.fruit.plot <- ggplot(data = df.overallStates, aes(x = AgeClass, y = FruitScans, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                         labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + ylab("\nFruit Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(height = 0, pch = 1, alpha = 5/10) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.fruit.plot
+
+write.csv(df.overallStates, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/df.overallStates.csv")
+
+ggsave(plot = raw.fruit.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.fruit.plot_REVISED.pdf", width = 6, height = 4)
+```
+
+GLMM Exploring predictors of fruit foraging within all foraging
+
+```{r}
+#running poisson glmm
+overallStates.glmm <- glmer(FruitScans ~ AgeClass +
+                                  SexClass +
+                                  (AgeClass*SexClass) +
+                                  MeanTempMax +
+                                  MeanRainfall +
+                                  MonthlyFruitBiomass_kg_ha +
+                                  offset(log(TotalForagingScans)) + 
+                                  (1 | Animal), 
+                                  data = df.overallStates,
+                                  family = poisson(link = "log"))
+
+#summary of model and checking for 0-inflation
+summary(overallStates.glmm)
+
+check_zeroinflation(overallStates.glmm, tolerance = 0.05)
+#Model is underfitting zeros (probable zero-inflation)
+
+overallStates.glmm.zi <- glmmTMB(FruitScans ~ AgeClass +
+                                  SexClass +
+                                  (AgeClass*SexClass) +
+                                  MeanTempMax +
+                                  MeanRainfall +
+                                  MonthlyFruitBiomass_kg_ha +
+                                  offset(log(TotalForagingScans)) + 
+                                  (1 | Animal), 
+                                  data = df.overallStates,
+                                  ziformula=~0,
+                                  family = poisson)
+
+summary(overallStates.glmm.zi)
+tab_model(overallStates.glmm.zi) #IRR table for glmm
+
+#plotting incidence rate ratios
+plot_model(overallStates.glmm.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Fruit Scan Frequency per Rotation)") +
+           theme_minimal() -> overallStates.plot; overallStates.plot
+
+ggsave(plot = overallStates.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/overallStates.plot.pdf", width = 6, height = 4)
+
+plot_model(overallStates.glmm.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios for Fruit Scan Counts per Rotation") +
+           theme_minimal() -> overallStates.plot.SI; overallStates.plot.SI
+
+ggsave(plot = overallStates.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/overallStates.plot.SI.pdf", width = 6, height = 4)
+
+overallStates.plot.PredictedScans <- plot_model(overallStates.glmm.zi, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("\nPredicted Counts\n(Fruit Scans per Rotation\n") +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           ylim(0,3) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); overallStates.plot.PredictedScans
+
+combiined_fruitScanPlot <- ggarrange(overallStates.plot, overallStates.plot.PredictedScans,
+          labels = c("A", "B"),
+          ncol = 2, nrow = 1)
+
+ggsave(plot = overallStates.plot.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/overallStates.plot.PredictedScans.pdf", width = 6, height = 4)
+
+ggsave(plot = combiined_fruitScanPlot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combiined_fruitScanPlot.SI.pdf", width = 6, height = 4 )
+```
+
+Reading in data 
+
+```{r}
+dfh1.difficulty <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/FruitDifficultyScansXDays.csv"))
+
+dfh1.difficulty$Group <- as.factor(dfh1.difficulty$Group)
+dfh1.difficulty$AdjustedAge <- as.factor(dfh1.difficulty$AdjustedAge)
+dfh1.difficulty$AdjustedAgeSex <- as.factor(dfh1.difficulty$AdjustedAgeSex)
+dfh1.difficulty$Month_Yr <- format(as.Date(dfh1.difficulty$Date), "%Y-%m") #adding a month-year column
+dfh1.difficulty$Year <- format(as.Date(dfh1.difficulty$Date), "%Y") #adding a year column
+dfh1.difficulty$SexClass <- factor(dfh1.difficulty$SexClass, levels = c("Female", "Male"))
+```
+
+Adding fruit biomass data to df.overallStates
+
+```{r}
+dfh1.difficulty <- left_join(dfh1.difficulty, fruitBiomass, by = "Month_Yr")
+```
+
+Filtering for individuals who were only in study <2 months, and who had very few scans
+
+```{r}
+dfh1.difficulty <- dfh1.difficulty %>%
+                    left_join(., rotationTable, by = "Date") %>% #joining roation so we can group_by later
+                    mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+dfh1.difficulty <- dfh1.difficulty %>%
+                    group_by(Rotation, Animal) %>%
+                    summarise(Group = unique(Group),
+                              Month_Yr = mode(Month_Yr),
+                              AgeClass = mode(AdjustedAge),
+                              SexClass = unique(SexClass),
+                              MeanTempMax = mean(TemperatureMax),
+                              MeanTempMin = mean(TemperatureMin),
+                              MeanRainfall = mean(Rainfall),
+                              MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                              EasyFruitScans = sum(easy),
+                              TotalFruitScans = sum(TotalFruitScans)) 
+
+dfh1.difficulty <- as.data.frame(filter(dfh1.difficulty, TotalFruitScans > 0))
+```
+
+Summary of data fruit difficulty
+
+```{r}
+sum(dfh1.difficulty$TotalFruitScans) #2077 foraging scans collected
+length(unique(dfh1.difficulty$Animal)) #101 animals
+```
+
+Plotting raw data
+
+```{r}
+dfh1.difficulty$AgeClass <- factor(dfh1.difficulty$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.difficulty.plot <- ggplot(data = dfh1.difficulty, aes(x = AgeClass, y = EasyFruitScans, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nEasy Fruit Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.difficulty.plot
+
+
+write.csv(dfh1.difficulty, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/dfh1.difficulty.csv")
+
+ggsave(plot = raw.difficulty.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.difficulty.plot_REVISED.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of easy fruit foraging
+
+```{r}
+easyFruitScans.glmm <- glmer(EasyFruitScans ~ AgeClass +
+                                  SexClass +
+                                  AgeClass*SexClass +
+                                  MeanTempMax +
+                                  MeanRainfall +
+                                  MonthlyFruitBiomass_kg_ha +
+                                  offset(log(TotalFruitScans)) + 
+                                  (1 | Animal), 
+                                  data = dfh1.difficulty,
+                                  family = poisson(link = "log")) 
+
+summary(easyFruitScans.glmm)
+tab_model(easyFruitScans.glmm)
+check_zeroinflation(easyFruitScans.glmm, tolerance = 0.05) #Model seems ok, ratio of observed and predicted zeros is within the tolerance range.
+
+#plotting incidence rate ratios
+plot_model(easyFruitScans.glmm,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Easy Fruit Frequency per Rotation") +
+           theme_minimal() -> easyFruitScans.glmm.plot; easyFruitScans.glmm.plot
+
+ggsave(plot = easyFruitScans.glmm.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/easyFruitScans.glmm.plot.pdf", width = 6, height = 4)
+
+plot_model(easyFruitScans.glmm,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> easyFruitScans.glmm.plot.SI; easyFruitScans.glmm.plot.SI
+
+ggsave(plot = easyFruitScans.glmm.zi.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/easyFruitScans.glmm.zi.plot.SI.pdf", width = 6, height = 4)
+
+easyFruitScans.plot.PredictedScans <- plot_model(easyFruitScans.glmm, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("Predicted Counts\n(Easy Fruit Scans per Rotation)\n") +
+           ylim(0,220) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); easyFruitScans.plot.PredictedScans
+
+ggsave(plot = easyFruitScans.plot.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/easyFruitScans.plot.PredictedScans.pdf", width = 6, height = 4)
+
+combined_easyFruitScanPlot_SI <- ggarrange(easyFruitScans.glmm.plot, easyFruitScans.plot.PredictedScans,
+          labels = c("A", "B"),
+          nrow = 1, ncol = 2)
+
+ggsave(plot = combined_easyFruitScanPlot_SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_easyFruitScanPlot_SI.pdf", width = 6, height = 4)
+
+```
+
+##### Prediction 2: Smaller individuals, i.e. juveniles and females, will spend more time foraging for gleaned invertebrates versus invertebrates extracted from within substrates.
+
+Pre-filtering
+
+```{r}
+dfh1.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
+
+dfh1.invertebrates$Group <- as.factor(dfh1.invertebrates$Group)
+dfh1.invertebrates$AdjustedAge <- as.factor(dfh1.invertebrates$AdjustedAge)
+dfh1.invertebrates$AdjustedAgeSex <- as.factor(dfh1.invertebrates$AdjustedAgeSex)
+dfh1.invertebrates$Month_Yr <- format(as.Date(dfh1.invertebrates$Date), "%Y-%m") #adding a month-year column
+dfh1.invertebrates$Year <- format(as.Date(dfh1.invertebrates$Date), "%Y") #adding a year column
+dfh1.invertebrates$Sex.Class <- factor(dfh1.invertebrates$Sex.Class, levels = c("female", "male"))
+```
+
+Joining rotation, fruit biomass
+
+```{r}
+dfh1.invertebrates <- dfh1.invertebrates %>%
+                      left_join(., fruitBiomass, by = "Month_Yr")
+
+dfh1.invertebrates <- dfh1.invertebrates %>%
+                      left_join(., rotationTable, by = "Date") %>% #joining roation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+dfh1.invertebrates <- dfh1.invertebrates %>%
+                      group_by(Rotation, Animal) %>%
+                      summarise(AdjustedAgeSex = mode(AdjustedAgeSex),
+                              AgeClass = mode(AdjustedAge),
+                              Month_Yr = mode(Month_Yr),
+                              SexClass = unique(Sex.Class),
+                              Group = unique(Group),
+                              MeanTempMax = mean(TemperatureMax),
+                              MeanTempMin = mean(TemperatureMin),
+                              MeanRainfall = mean(Rainfall),
+                              MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                              DRI = sum(DRI),
+                              EFF = sum(EFF),
+                              EFI = sum(EFI),
+                              EXC = sum(EXC),
+                              FFL = sum(FFL),
+                              FFR = sum(FFR),
+                              FIN = sum(FIN),
+                              FOT = sum(FOT),
+                              OTH = sum(OTH),
+                              PLA = sum(PLA),
+                              RES = sum(RES),
+                              SAC = sum(SAC),
+                              SAG = sum(SAG),
+                              SDI = sum(SDI),
+                              SRE = sum(SRE),
+                              TRA = sum(TRA),
+                              VFO = sum(VFO),
+                              VIG = sum(VIG)) 
+
+dfh1.invertebrates <- as.data.frame(dfh1.invertebrates)
+```
+
+Adding relevant columns 
+
+```{r}
+dfh1.invertebrates <- dfh1.invertebrates %>%
+                      mutate(TotalFruitScans = EFF + FFR) %>% 
+                      mutate(GleanedInvertebrateScans = VFO + FIN) %>%
+                      mutate(TotalInvertebrateScans = EFI + FIN + VFO) %>%
+                      mutate(TotalForagingScans = EFF + EFI + FFL + FFR + FIN + FIN + FOT + VFO) %>%
+                      filter(TotalInvertebrateScans > 0)
+```
+
+Summary of data post-filtering; gleaned invertebrates
+
+```{r}
+sum(dfh1.invertebrates$TotalInvertebrateScans) #13357 foraging scans collected
+length(unique(dfh1.invertebrates$Animal)) #107 animals
+```
+
+Plotting raw data
+
+```{r}
+dfh1.invertebrates$AgeClass <- factor(dfh1.invertebrates$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.gleaned.plot <- ggplot(data = dfh1.invertebrates, aes(x = AgeClass, y = GleanedInvertebrateScans, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nGleaned Invertebrate Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.gleaned.plot
+
+ggsave(plot = raw.gleaned.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.gleaned.plot_REVISED.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of gleaned invertebrate foraging
+
+```{r}
+gleanedInvert.glmm <- glmer(GleanedInvertebrateScans ~ AgeClass +
+                                  SexClass +
+                                  (AgeClass*SexClass) +
+                                  MeanTempMax +
+                                  MeanRainfall +
+                                  MonthlyFruitBiomass_kg_ha +
+                                  offset(log(TotalInvertebrateScans)) + 
+                                  (1 | Animal), 
+                                  data = dfh1.invertebrates,
+                                  family = poisson(link = "log")) 
+
+summary(gleanedInvert.glmm)
+tab_model(gleanedInvert.glmm)
+check_zeroinflation(gleanedInvert.glmm, tolerance = 0.05)
+
+plot_model(gleanedInvert.glmm,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Gleaned Invertebrate Frequency per Rotation)") +
+           theme_minimal() -> gleanedInvert.glmm.plot; gleanedInvert.glmm.plot
+
+ggsave(plot = gleanedInvert.glmm.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/gleanedInvert.glmm.plot.pdf", width = 6, height = 4)
+
+plot_model(gleanedInvert.glmm,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> gleanedInvert.glmm.plot.SI; gleanedInvert.glmm.plot.SI
+
+ggsave(plot = gleanedInvert.glmm.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/gleanedInvert.glmm.plot.SI.pdf", width = 6, height = 4)
+
+gleanedInvert.glmm.plot.PredictedScans <- plot_model(gleanedInvert.glmm, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("Predicted Counts\n(Gleaned Invertebrate Scans per Rotation)\n") +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                            labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           ylim(0,10) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); gleanedInvert.glmm.plot.PredictedScans
+
+ggsave(plot = gleanedInvert.glmm.plot.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/gleanedInvert.glmm.plot.PredictedScans.pdf", width = 6, height = 4)
+
+combined_gleanedInvPlot <- ggarrange(gleanedInvert.glmm.plot, gleanedInvert.glmm.plot.PredictedScans,
+          labels = c("A", "B"),
+          nrow = 1, ncol = 2)
+
+ggsave(plot = combined_gleanedInvPlot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_gleanedInvPlot_SI.pdf", width = 6, height = 4)
+```
+
+#### Hypothesis 2. Individuals will differ in use of their environment based on their ability to use different supports and their relative predation risk. We predict that smaller individuals, i.e. juveniles and females, will spend: 1) more time using smaller/ thinner substrates and more vertically angled substrates, and 2)  less time foraging on the ground, or in the upper canopy. Hypothesis 3: Niche differentiation in habitat use is not constant across foraging contexts. We predict a greater magnitude of differentiation between sex and age classes in substrate and canopy use during invertebrate foraging contexts than during fruit foraging contexts, as the latter may be more constrained in time and space.
+
+Pre-filtering for invertebrate foraging & branch use
+
+```{r}
+supportDF.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv"))
+
+supportDF.invertebrates$Group <- as.factor(supportDF.invertebrates$Group)
+supportDF.invertebrates$AdjustedAge <- as.factor(supportDF.invertebrates$AdjustedAge)
+supportDF.invertebrates$AdjustedAgeSex <- as.factor(supportDF.invertebrates$AdjustedAgeSex)
+supportDF.invertebrates$Month_Yr <- format(as.Date(supportDF.invertebrates$Date), "%Y-%m") #adding a month-year column
+supportDF.invertebrates$Year <- format(as.Date(supportDF.invertebrates$Date), "%Y") #adding a year column
+supportDF.invertebrates$SexClass <- factor(supportDF.invertebrates$SexClass, levels = c("female", "male"))
+```
+
+Joining fruit biomass
+
+```{r}
+supportDF.invertebrates <- left_join(supportDF.invertebrates, fruitBiomass, by = "Month_Yr")
+```
+
+Joining rotation, z-transforming
+
+```{r}
+supportDF.invertebrates <- supportDF.invertebrates %>%
+                      left_join(., rotationTable, by = "Date" ) %>% #joining rotation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+supportDF.invertebrates <- supportDF.invertebrates %>%
+                           group_by(Rotation, Animal) %>%
+                           summarise(Month_Yr = mode(Month_Yr),
+                                     SexClass = unique(SexClass),
+                                     AgeClass = mode(AdjustedAge),
+                                     Group = mode(Group),
+                                     MeanTempMax = mean(TemperatureMax),
+                                     MeanTempMin = mean(TemperatureMin),
+                                     MeanRainfall = mean(Rainfall),
+                                     MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                                     GroundScans = sum(GRO),
+                                     LowScans = sum(LOW),
+                                     MidScans = sum(MID),
+                                     UpperScans = sum(UPP),
+                                     TotalInvertebrateForagingCanopyLevelScans = sum(GRO) + sum(LOW) + sum(MID) + sum(UPP),
+                                     TotalInvertebrateForagingArborealScans = sum(LOW) + sum(MID) + sum(UPP),
+                                     SmallBranch = sum(Smbr),
+                                     MediumBranch = sum(Mdbr),
+                                     LargeBranch = sum(Lgbr),
+                                     HorizontalScans = sum(Hori),
+                                     VerticalScans = sum(Vert),
+                                     TotalInvertebrateForagingBranchUseScans = sum(Smbr) + sum(Mdbr) + sum(Lgbr))
+
+supportDF.invertebrates <- as.data.frame(supportDF.invertebrates)
+
+supportDF.invertebrates <- filter(supportDF.invertebrates, TotalInvertebrateForagingBranchUseScans > 0)
+```
+
+Summary of data post-filtering; gleaned invertebrates
+
+```{r}
+sum(supportDF.invertebrates$TotalInvertebrateForagingBranchUseScans) #6250 foraging scans collected
+length(unique(supportDF.invertebrates$Animal)) #104 animals
+```
+
+Raw data visualization of small branch use 
+
+```{r}
+supportDF.invertebrates$AgeClass <- factor(supportDF.invertebrates$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.SmBranch.invertebrate.plot <- ggplot(data = supportDF.invertebrates, aes(x = AgeClass, y = SmallBranch, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nSmall Branch Invertebrate Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank(),
+                               plot.title = element_text(hjust = 0.5, face = "bold")); raw.SmBranch.invertebrate.plot
+
+ggsave(plot = raw.SmBranch.invertebrate.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.SmBranch.invertebrate.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *branch use* during invertebrate foraging
+
+```{r}
+branchUse.invertebrate.model <- glmer(SmallBranch ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass * SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalInvertebrateForagingBranchUseScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.invertebrates,
+                                      family = poisson(link = "log"))
+
+summary(branchUse.invertebrate.model)
+tab_model(branchUse.invertebrate.model)
+check_zeroinflation(branchUse.invertebrate.model, tolerance = 0.05)
+
+#plotting incidence rate ratio
+plot_model(branchUse.invertebrate.model,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           theme_minimal() +
+           ylab("\nIncidence Rate Ratios \n(Small Branch Scans per Rotation\nduring Invertebrate Foraging Scans)\n") -> branchUse.invertebrate.model.plot; branchUse.invertebrate.model.plot
+
+ggsave(plot = branchUse.invertebrate.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.invertebrate.model.plot.pdf", width = 6, height = 4)
+
+plot_model(branchUse.invertebrate.model,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> branchUse.invertebrate.model.plot.SI; branchUse.invertebrate.model.plot.SI
+
+ggsave(plot = branchUse.invertebrate.model.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.invertebrate.model.plot.SI.pdf", width = 6, height = 4)
+
+branchUse.invertebrate.model.plot.SI.PredictedScans <- plot_model(branchUse.invertebrate.model, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("Predicted Counts\n(Small Branch Scans per Rotation\nduring Invertebrate Foraging)\n") +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           ylim(0,7) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); branchUse.invertebrate.model.plot.SI.PredictedScans
+
+ggsave(plot = branchUse.invertebrate.model.plot.SI.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.invertebrate.model.plot.SI.PredictedScans.pdf", width = 6, height = 4)
+
+combined_SmBranch_InvModel <- ggarrange(branchUse.invertebrate.model.plot, branchUse.invertebrate.model.plot.SI.PredictedScans,
+          labels = c("A", "B"),
+          ncol = 2, nrow = 1)
+
+ggsave(plot = combined_SmBranch_InvModel, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_SmBranch_InvModel.pdf", width = 10, height = 4)
+```
+
+Preparing data for fruit foraging & branch use
+
+```{r}
+supportDF.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv"))
+supportDF.fruit$Group <- as.factor(supportDF.fruit$Group)
+supportDF.fruit$AdjustedAge <- as.factor(supportDF.fruit$AdjustedAge)
+supportDF.fruit$AdjustedAgeSex <- as.factor(supportDF.fruit$AdjustedAgeSex)
+supportDF.fruit$Month_Yr <- format(as.Date(supportDF.fruit$Date), "%Y-%m") #adding a month-year column
+supportDF.fruit$Year <- format(as.Date(supportDF.fruit$Date), "%Y") #adding a year column
+supportDF.fruit$SexClass <- factor(supportDF.fruit$SexClass, levels = c("female", "male"))
+```
+
+```{r}
+rotationTable2017 <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/RotationsREW.csv"))
+
+rotationTable2017 <- rotationTable2017 %>%
+                     dplyr::select(DateOf, Rotation) %>%
+                     rename(Date = DateOf)
+```
+
+Adding fruit biomass to the df
+
+```{r}
+supportDF.fruit <- left_join(supportDF.fruit, fruitBiomass, by = "Month_Yr")
+```
+
+Joining rotation, z-transforming
+
+```{r}
+supportDF.fruit <- supportDF.fruit %>%
+                      left_join(., rotationTable2017, by = "Date" ) %>% #joining roation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+mode <- function(x) { names(which.max(table(x))) }
+
+supportDF.fruit <- supportDF.fruit %>%
+                   group_by(Rotation, Animal) %>%
+                   summarise(Month_Yr = mode(Month_Yr),
+                             AdjustedAgeSex = mode(AdjustedAgeSex),
+                             AgeClass = mode(AdjustedAge),
+                             SexClass = unique(SexClass),
+                             Group = mode(Group),
+                             MeanTempMax = mean(TemperatureMax),
+                             MeanTempMin = mean(TemperatureMin),
+                             MeanRainfall = mean(Rainfall),
+                             MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                             GroundScans = sum(GRO),
+                             LowScans = sum(LOW),
+                             MidScans = sum(MID),
+                             UpperScans = sum(UPP),
+                             TotalFruitForagingCanopyLevelScans = sum(GRO) + sum(LOW) + sum(MID) + sum(UPP),
+                             TotalFruitForagingArborealScans = sum(LOW) + sum(MID) + sum(UPP),
+                             SmallBranch = sum(Smbr),
+                             MediumBranch = sum(Mdbr),
+                             LargeBranch = sum(Lgbr),
+                             HorizontalScans = sum(Hori),
+                             VerticalScans = sum(Vert),
+                             TotalFruitForagingBranchUseScans = sum(Smbr) + sum(Mdbr) + sum(Lgbr))
+
+supportDF.fruit <- as.data.frame(supportDF.fruit)
+
+supportDF.fruit <- filter(supportDF.fruit, TotalFruitForagingBranchUseScans > 0)
+```
+
+Summary of data; small branch use fruits
+
+```{r}
+sum(supportDF.fruit$TotalFruitForagingBranchUseScans) #1397 foraging scans collected
+length(unique(supportDF.fruit$Animal)) #99 animals
+```
+
+Raw data visualization of small branch use 
+
+```{r}
+supportDF.fruit$AgeClass <- factor(supportDF.fruit$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.branch.fruit.plot <- ggplot(data = supportDF.fruit, aes(x = AgeClass, y = SmallBranch, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c( "infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\n\nSmall Branch Fruit Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.branch.fruit.plot
+
+ggsave(plot = raw.branch.fruit.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.branch.fruit.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *branch use* during fruit foraging
+
+```{r}
+branchUse.fruit.model <- glmer(SmallBranch ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass * SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalFruitForagingBranchUseScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.fruit,
+                                      family = poisson(link = "log"))
+
+summary(branchUse.fruit.model)
+tab_model(branchUse.fruit.model)
+check_zeroinflation(branchUse.fruit.model, tolerance = 0.05) #Model has no observed zeros in the response variable.
+
+#plotting incidence rate ratio
+plot_model(branchUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Small Branch Frequency during\nFruit Foraging per Rotation\n") +
+           theme_minimal() -> branchUse.fruit.model.plot; branchUse.fruit.model.plot
+
+ggsave(plot = branchUse.fruit.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.fruit.model.plot.pdf", width = 6, height = 4)
+
+plot_model(branchUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> branchUse.fruit.model.plot.SI; branchUse.fruit.model.plot.SI
+
+ggsave(plot = branchUse.fruit.model.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.fruit.model.plot.SI.pdf", width = 6, height = 4)
+
+branchUse.fruit.model.plot.SI.PredictedScans <- plot_model(branchUse.fruit.model, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           ylim(0,4) +
+           xlab("") +
+           ylab("\nPredicted Counts\nSmall Branch Scans during\nFruit Foraging per Rotation\n") +
+           theme_minimal() +
+           scale_x_discrete(limit = c( "infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); branchUse.fruit.model.plot.SI.PredictedScans
+
+ggsave(plot = branchUse.fruit.model.plot.SI.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.fruit.model.plot.SI.PredictedScans.pdf", width = 6, height = 4)
+
+combined_SmBranch.Fruit <- ggarrange(branchUse.fruit.model.plot, branchUse.fruit.model.plot.SI.PredictedScans,
+          labels = c("A", "B"),
+          ncol = 2, nrow = 2)
+
+ggsave(plot = combined_SmBranch.Fruit, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_SmBranch.Fruit.pdf", width = 6, height = 4)
+```
+
+##### Angle of branch use across invertebrate foraging and fruit foraging
+
+Raw data visualization of vertical branch use 
+
+```{r}
+supportDF.invertebrates$AgeClass <- factor(supportDF.invertebrates$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.vertical.invertebrate.plot <- ggplot(data = supportDF.invertebrates, aes(x = AgeClass, y = VerticalScans, fill = SexClass)) +
+                         geom_violin(alpha = 0.5) +
+                         scale_fill_manual(values = c("mediumpurple2", "orange")) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nVertical Branch Scans during Invertebrate Foraging\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.vertical.invertebrate.plot
+
+ggsave(plot = raw.vertical.invertebrate.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.vertical.invertebrate.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *vertical use* during invertebrate foraging
+
+```{r}
+vertUse.invertebrate.model <- glmer(VerticalScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass * SexClass) + 
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                offset(log(TotalInvertebrateForagingBranchUseScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.invertebrates,
+                                      family = poisson(link = "log")) 
+
+summary(vertUse.invertebrate.model)
+tab_model(vertUse.invertebrate.model)
+check_zeroinflation(vertUse.invertebrate.model)
+
+#plotting incidence rate ratio
+plot_model(vertUse.invertebrate.model,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Vertical Scans Frequency\nduring Invertebrate Foraging per Rotation") +
+           theme_minimal() -> vertUse.invertebrate.model.plot; vertUse.invertebrate.model.plot
+
+ggsave(plot = vertUse.invertebrate.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.invertebrate.model.zi.plot.pdf", width = 6, height = 4)
+
+plot_model(vertUse.invertebrate.model,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> vertUse.invertebrate.model.SI; vertUse.invertebrate.model.SI
+
+ggsave(plot = vertUse.invertebrate.model.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.invertebrate.model.SI.pdf", width = 6, height = 4)
+
+vertUse.invertebrate.model.SI.PredictedScans <- plot_model(vertUse.invertebrate.model, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("\nPredicted Counts\n(Vertical Substrate Scans\nduring Invertebrate Foraging per Rotation)\n") +
+           ylim(0,5) +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); vertUse.invertebrate.model.SI.PredictedScans
+
+ggsave(plot = vertUse.invertebrate.model.SI.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.invertebrate.model.SI.PredictedScans.pdf", width = 6, height = 4)
+
+combined_VertBrnch_Inv <- ggarrange(vertUse.invertebrate.model.plot, vertUse.invertebrate.model.SI.PredictedScans,
+          labels = c("A", "B"),
+          ncol = 2, nrow = 1)
+
+ggsave(plot = combined_VertBrnch_Inv, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_VertBrnch_Inv.pdf", width = 6, height = 4)
+```
+
+Raw data visualization of vertical branch use in FRUIT 
+
+```{r}
+supportDF.fruit$AgeClass <- factor(supportDF.fruit$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.vert.fruit.plot <- ggplot(data = supportDF.fruit, aes(x = AgeClass, y = VerticalScans, fill = SexClass)) +
+                         geom_violin(alpha = 5/10) +
+                         scale_fill_manual(values = c("mediumpurple2", "orange")) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nVertical Branch Scans during Fruit Foraging\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.vert.fruit.plot
+
+ggsave(plot = raw.vert.fruit.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.vert.fruit.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *vertical use* during fruit foraging
+
+```{r}
+vertUse.fruit.model <- glmer(VerticalScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass * SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalFruitForagingBranchUseScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.fruit,
+                                      family = poisson(link = "log")) 
+
+summary(vertUse.fruit.model)
+tab_model(vertUse.fruit.model)
+check_zeroinflation(vertUse.fruit.model, tolerance = 0.05)
+
+#plotting incidence rate ratio
+plot_model(vertUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Vertical Branch Use Frequency\nduring Fruit Foraging per Rotation\n") +
+           theme_minimal() -> vertUse.fruit.model.plot; vertUse.fruit.model.plot
+
+ggsave(plot = vertUse.fruit.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.fruit.model.plot.pdf", width = 6, height = 4)
+
+plot_model(vertUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> vertUse.fruit.model.SI; vertUse.fruit.model.SI
+
+ggsave(plot = vertUse.fruit.model.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.fruit.model.SI.pdf", width = 6, height = 4)
+
+vertUse.fruit.model.PredictedScans <- plot_model(vertUse.fruit.model, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("\nPredicted Counts\n(Vertical Branch Scans\nduring Fruit Foraging per Rotation\n") +
+           ylim(0,3) +
+           theme_minimal() +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); vertUse.fruit.model.PredictedScans
+
+ggsave(plot = vertUse.fruit.model.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.fruit.model.PredictedScans.pdf", width = 6, height = 4)
+
+combined_vertBranch_fruit <- ggarrange(vertUse.fruit.model.plot, vertUse.fruit.model.PredictedScans,
+          labels = c("A", "B"),
+          ncol = 2, nrow = 1)
+
+ggsave(plot = combined_vertBranch_fruit, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_vertBranch_fruit.pdf", width = 6, height = 4)
+```
+
+##### Upper use in arboreal invertebrate foraging and arboreal fruit foraging
+
+For the horizontal and branch use datasets, we filtered to at least 2 branch scans. This time, we will filter that same original dataset to filter for canopy use scans. 
+
+Pre-filtering for arboreal invertebrate foraging 
+
+```{r}
+supportDF.invertebrates.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv"))
+
+supportDF.invertebrates.arboreal$Group <- as.factor(supportDF.invertebrates.arboreal$Group)
+supportDF.invertebrates.arboreal$AdjustedAge <- as.factor(supportDF.invertebrates.arboreal$AdjustedAge)
+supportDF.invertebrates.arboreal$AdjustedAgeSex <- as.factor(supportDF.invertebrates.arboreal$AdjustedAgeSex)
+supportDF.invertebrates.arboreal$Month_Yr <- format(as.Date(supportDF.invertebrates.arboreal$Date), "%Y-%m") #adding a month-year column
+supportDF.invertebrates.arboreal$Year <- format(as.Date(supportDF.invertebrates.arboreal$Date), "%Y") #adding a year column
+supportDF.invertebrates.arboreal$SexClass <- factor(supportDF.invertebrates.arboreal$SexClass, levels = c("female", "male"))
+```
+
+Joining biomass, rotation, and summarizing my rotation
+
+```{r}
+supportDF.invertebrates.arboreal <- supportDF.invertebrates.arboreal %>%
+                                    left_join(., fruitBiomass, by = "Month_Yr")
+
+supportDF.invertebrates.arboreal <- supportDF.invertebrates.arboreal %>%
+                      left_join(., rotationTable, by = "Date" ) %>% #joining roation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+supportDF.invertebrates.arboreal <- supportDF.invertebrates.arboreal %>%
+                           group_by(Rotation, Animal) %>%
+                           summarise(Month_Yr = mode(Month_Yr),
+                                     SexClass = unique(SexClass),
+                                     AgeClass = mode(AdjustedAge),
+                                     Group = mode(Group),
+                                     MeanTempMax = mean(TemperatureMax),
+                                     MeanTempMin = mean(TemperatureMin),
+                                     MeanRainfall = mean(Rainfall),
+                                     MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                                     GroundScans = sum(GRO),
+                                     LowScans = sum(LOW),
+                                     MidScans = sum(MID),
+                                     UpperScans = sum(UPP),
+                                     TotalInvertebrateForagingCanopyLevelScans = sum(GRO) + sum(LOW) + sum(MID) + sum(UPP),
+                                     TotalInvertebrateForagingArborealScans = sum(LOW) + sum(MID) + sum(UPP),
+                                     SmallBranch = sum(Smbr),
+                                     MediumBranch = sum(Mdbr),
+                                     LargeBranch = sum(Lgbr),
+                                     HorizontalScans = sum(Hori),
+                                     VerticalScans = sum(Vert),
+                                     TotalInvertebrateForagingBranchUseScans = sum(Smbr) + sum(Mdbr) + sum(Lgbr))
+
+supportDF.invertebrates.arboreal <- as.data.frame(supportDF.invertebrates.arboreal)
+
+supportDF.invertebrates.arboreal <- filter(supportDF.invertebrates.arboreal, TotalInvertebrateForagingArborealScans > 0)
+```
+
+Raw data visualization of upp use in INVERTs (within arboreal use)
+
+```{r}
+supportDF.invertebrates.arboreal$AgeClass <- factor(supportDF.invertebrates.arboreal$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.arboreal.invert.plot <- ggplot(data = supportDF.invertebrates.arboreal, aes(x = AgeClass, y = UpperScans, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nUpper Canopy Invertebrate Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.arboreal.invert.plot
+
+ggsave(plot = raw.arboreal.invert.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.arboreal.invert.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *upper canopy use* during invertebrate foraging
+
+```{r}
+upperUse.invert.model <- glmer(UpperScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass * SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalInvertebrateForagingArborealScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.invertebrates.arboreal,
+                                      family = poisson(link = "log")) #boundary (singular) fit: see ?isSingular
+
+summary(upperUse.invert.model)
+tab_model(upperUse.invert.model)
+check_zeroinflation(upperUse.invert.model, tolerance = 0.05) #Model is underfitting zeros (probable zero-inflation).
+
+upperUse.invert.model.zi <- glmmTMB(UpperScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass * SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalInvertebrateForagingArborealScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.invertebrates.arboreal,
+                                      ziformula=~0,
+                                      family = poisson)
+
+summary(upperUse.invert.model.zi)
+
+#plotting incidence rate ratio
+plot_model(upperUse.invert.model.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n(Upper Canopy Scan Frequency\nduring Invertebrate Foraging per Rotation\n") +
+           theme_minimal() -> upperUse.invert.model.zi.plot; upperUse.invert.model.zi.plot
+
+ggsave(plot = upperUse.invert.model.zi.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.invert.model.zi.plot.pdf", width = 6, height = 4)
+
+plot_model(upperUse.invert.model.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> upperUse.invert.model.zi.plot.SI; upperUse.invert.model.zi.plot.SI
+
+ggsave(plot = upperUse.invert.model.zi.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.invert.model.zi.plot.SI.pdf", width = 6, height = 4)
+
+upperUse.invert.model.zi.plot.SI.PredictedScans <- plot_model(upperUse.invert.model.zi, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("\nPredicted Counts\n(Upper Canopy Scans during\nInvertebrate Foraging per Rotation\n") +
+           ylim(0,3) +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); upperUse.invert.model.zi.plot.SI.PredictedScans
+
+ggsave(plot = upperUse.invert.model.zi.plot.SI.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.invert.model.zi.plot.SI.PredictedScans.pdf", width = 6, height = 4)
+
+combined_upperUse_inv <- ggarrange(upperUse.invert.model.zi.plot, upperUse.invert.model.zi.plot.SI.PredictedScans,
+          labels = c("A", "B"),
+          nrow = 1, ncol = 2)
+
+ggsave(plot = combined_upperUse_inv, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_upperUse_inv.pdf", width = 6, height = 4)
+```
+
+### Arboreal fruit foraging
+
+Filtering for upper canopy use during arboreal fruit foraging
+
+```{r}
+supportDF.fruits.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv")) 
+
+supportDF.fruits.arboreal$Group <- as.factor(supportDF.fruits.arboreal$Group)
+supportDF.fruits.arboreal$AdjustedAge <- as.factor(supportDF.fruits.arboreal$AdjustedAge)
+supportDF.fruits.arboreal$AdjustedAgeSex <- as.factor(supportDF.fruits.arboreal$AdjustedAgeSex)
+supportDF.fruits.arboreal$Month_Yr <- format(as.Date(supportDF.fruits.arboreal$Date), "%Y-%m") #adding a month-year column
+supportDF.fruits.arboreal$Year <- format(as.Date(supportDF.fruits.arboreal$Date), "%Y") #adding a year column
+supportDF.fruits.arboreal$SexClass <- factor(supportDF.fruits.arboreal$SexClass, levels = c("female", "male"))
+```
+
+Joining fruit biomass, summarizing by rotation
+
+```{r}
+supportDF.fruits.arboreal <- supportDF.fruits.arboreal %>%
+                             left_join(., fruitBiomass, by = "Month_Yr")
+
+supportDF.fruits.arboreal <- supportDF.fruits.arboreal %>%
+                      left_join(., rotationTable, by = "Date" ) %>% #joining roation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+supportDF.fruits.arboreal <- supportDF.fruits.arboreal %>%
+                           group_by(Rotation, Animal) %>%
+                           summarise(Month_Yr = mode(Month_Yr),
+                                     SexClass = unique(SexClass),
+                                     AgeClass = mode(AdjustedAge),
+                                     Group = mode(Group),
+                                     MeanTempMax = mean(TemperatureMax),
+                                     MeanTempMin = mean(TemperatureMin),
+                                     MeanRainfall = mean(Rainfall),
+                                     MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                                     GroundScans = sum(GRO),
+                                     LowScans = sum(LOW),
+                                     MidScans = sum(MID),
+                                     UpperScans = sum(UPP),
+                                     TotalFruitForagingCanopyLevelScans = sum(GRO) + sum(LOW) + sum(MID) + sum(UPP),
+                                     TotalFruitForagingArborealScans = sum(LOW) + sum(MID) + sum(UPP),
+                                     SmallBranch = sum(Smbr),
+                                     MediumBranch = sum(Mdbr),
+                                     LargeBranch = sum(Lgbr),
+                                     HorizontalScans = sum(Hori),
+                                     VerticalScans = sum(Vert),
+                                     TotalFruitForagingBranchUseScans = sum(Smbr) + sum(Mdbr) + sum(Lgbr))
+
+supportDF.fruits.arboreal <- as.data.frame(supportDF.fruits.arboreal)
+
+supportDF.fruits.arboreal <- filter(supportDF.fruits.arboreal, TotalFruitForagingArborealScans > 0) #297 rows
+```
+
+Summary of data; gleaned invertebrates
+
+```{r}
+sum(supportDF.fruits.arboreal$TotalFruitForagingArborealScans) #2028 foraging scans collected
+length(unique(supportDF.fruits.arboreal$Animal)) #101 animals
+```
+
+Raw data visualization of upper use in fruit 
+
+```{r}
+supportDF.fruits.arboreal$AgeClass <- factor(supportDF.fruits.arboreal$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.upper.fruit.plot <- ggplot(data = supportDF.fruits.arboreal, aes(x = AgeClass, y = UpperScans, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nUpper Canopy Fruit Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 3/10, height = 0) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.upper.fruit.plot
+
+ggsave(plot = raw.upper.fruit.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.upper.fruit.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *upper use* during fruit foraging
+
+```{r}
+upperUse.fruit.model <- glmer(UpperScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass*SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalFruitForagingArborealScans)) + 
+                                      (1 | Group/Animal), 
+                                      data = supportDF.fruits.arboreal,
+                                      family = poisson(link = "log"))
+
+summary(upperUse.fruit.model)
+tab_model(upperUse.fruit.model)
+check_zeroinflation(upperUse.fruit.model, tolerance = 0.05)
+
+#plotting incidence rate ratio
+plot_model(upperUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\nUpper Canopy Scan Frequency during\nFruit Foraging per Rotation\n") +
+           theme_minimal() -> upperUse.fruit.model.plot; upperUse.fruit.model.plot
+
+ggsave(plot = upperUse.fruit.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.fruit.model.plot.pdf", width = 6, height = 4)
+
+plot_model(upperUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> upperUse.fruit.model.plot.SI; upperUse.fruit.model.plot.SI
+
+ggsave(plot = upperUse.fruit.model.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.fruit.model.plot.SI.pdf", width = 6, height = 4)
+
+upperUse.fruit.model.plot.SI.PredictedScans <- plot_model(upperUse.fruit.model, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("\nPredicted Counts\n(Upper Canopy Scans\n during Fruit Foraging per Rotation\n") +
+           ylim(0,2) +
+           theme_minimal() +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); upperUse.fruit.model.plot.SI.PredictedScans
+
+ggsave(plot = upperUse.fruit.model.plot.SI.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.fruit.model.plot.SI.PredictedScans.pdf", width = 6, height = 4)
+
+combined_UppFruit <- ggarrange(upperUse.fruit.model.plot, upperUse.fruit.model.plot.SI.PredictedScans,
+          labels = c("A", "B"),
+          nrow = 1, ncol = 2)
+
+ggsave(plot = combined_UppFruit, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_UppFruit.pdf", width = 6, height = 4)
+```
+
+##### Ground use in invertebrate foraging and arboreal fruit foraging
+
+For the vertical and branch use datasets, we filtered to at least 2 branch scans. This time, we will filter that same original dataset to filter for canopy use scans. 
+
+Pre-filtering for arboreal invertebrate foraging 
+
+```{r}
+supportDF.invertebrates.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv")) 
+
+supportDF.invertebrates.all$Group <- as.factor(supportDF.invertebrates.all$Group)
+supportDF.invertebrates.all$AdjustedAge <- as.factor(supportDF.invertebrates.all$AdjustedAge)
+supportDF.invertebrates.all$AdjustedAgeSex <- as.factor(supportDF.invertebrates.all$AdjustedAgeSex)
+supportDF.invertebrates.all$Month_Yr <- format(as.Date(supportDF.invertebrates.all$Date), "%Y-%m") #adding a month-year column
+supportDF.invertebrates.all$Year <- format(as.Date(supportDF.invertebrates.all$Date), "%Y") #adding a year column
+supportDF.invertebrates.all$SexClass <- factor(supportDF.invertebrates.all$SexClass, levels = c("female", "male"))
+```
+
+Joining biomass, rotation, summarizing
+
+```{r}
+supportDF.invertebrates.all <- supportDF.invertebrates.all %>%
+                               left_join(., fruitBiomass, by = "Month_Yr")
+
+supportDF.invertebrates.all <- supportDF.invertebrates.all %>%
+                      left_join(., rotationTable, by = "Date" ) %>% #joining roation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+supportDF.invertebrates.all <- supportDF.invertebrates.all %>%
+                           group_by(Rotation, Animal) %>%
+                           summarise(Month_Yr = mode(Month_Yr),
+                                     SexClass = unique(SexClass),
+                                     AgeClass = mode(AdjustedAge),
+                                     Group = mode(Group),
+                                     MeanTempMax = mean(TemperatureMax),
+                                     MeanTempMin = mean(TemperatureMin),
+                                     MeanRainfall = mean(Rainfall),
+                                     MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                                     GroundScans = sum(GRO),
+                                     LowScans = sum(LOW),
+                                     MidScans = sum(MID),
+                                     UpperScans = sum(UPP),
+                                     TotalInvertebrateForagingCanopyLevelScans = sum(GRO) + sum(LOW) + sum(MID) + sum(UPP))
+
+supportDF.invertebrates.all <- as.data.frame(supportDF.invertebrates.all)
+
+supportDF.invertebrates.all <- filter(supportDF.invertebrates.all, TotalInvertebrateForagingCanopyLevelScans > 0)
+```
+
+Summary of data; gleaned invertebrates
+
+```{r}
+sum(supportDF.invertebrates.all$TotalInvertebrateForagingCanopyLevelScans) #13323 foraging scans collected
+length(unique(supportDF.invertebrates.all$Animal)) #107 animals
+```
+
+Raw data visualization of ground use use during invertebrate foragin
+
+```{r}
+supportDF.invertebrates.all$AgeClass <- factor(supportDF.invertebrates.all$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.ground.invert.plot <- ggplot(data = supportDF.invertebrates.all, aes(x = AgeClass, y = GroundScans, fill = SexClass)) +
+                         geom_violin() +
+                         scale_fill_manual(values = alpha(c("mediumpurple2", "orange"), 0.5)) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nGround Level Invertebrate Foraging Scans\n(Raw Counts per Rotation)\n") +
+                         geom_jitter(alpha = 3/10, height = 0) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.ground.invert.plot
+
+ggsave(plot = raw.ground.invert.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.ground.invert.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *ground use* during invertebrate foraging
+
+```{r}
+groundUse.invert.model <- glmer(GroundScans ~ AdjustedAge +
+                                      SexClass +
+                                      (AdjustedAge*SexClass) +
+                                      MeanRainfall +
+                                      #MeanTempMax +
+                                      #MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalInvertebrateForagingCanopyLevelScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.invertebrates.all,
+                                      family = poisson(link = "log")) 
+
+#Warning message:
+#In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
+#  Model failed to converge with max|grad| = 0.00447968 (tol = 0.002, component 1)
+
+groundUse.invert.model.zi <- glmmTMB(GroundScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass*SexClass) +
+                                      MeanRainfall +
+                                      MeanTempMax +
+                                      MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalInvertebrateForagingCanopyLevelScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.invertebrates.all,
+                                      ziformula = ~0,
+                                      family = poisson) 
+
+summary(groundUse.invert.model.zi)
+tab_model(groundUse.invert.model.zi)
+
+#plotting incidence rate ratio
+plot_model(groundUse.invert.model.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylab("\nIncidence Rate Ratios\n)Ground Use Scan Frequency during\nInvertebrate Foraging per Rotation\n") +
+           theme_minimal() -> groundUse.invert.model.zi.plot; groundUse.invert.model.zi.plot
+
+ggsave(plot = groundUse.invert.model.zi.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.pdf", width = 6, height = 4)
+
+plot_model(groundUse.invert.model.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> groundUse.invert.model.zi.plot.SI; groundUse.invert.model.zi.plot.SI
+
+ggsave(plot = groundUse.invert.model.zi.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.SI.pdf", width = 6, height = 4)
+
+groundUse.invert.model.zi.plot.PredictedScans <- plot_model(groundUse.invert.model.zi, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("mediumpurple2", "orange")) +
+           xlab("") +
+           ylab("\nPredicted Counts\n(Ground Use Scans\nduring Invertebrate Foraging per Rotation\n") +
+           ylim(0,1) +
+           scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                            labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+           theme_minimal() +
+           theme(legend.title = element_blank(),
+                 legend.position = "bottom"); groundUse.invert.model.zi.plot.PredictedScans
+
+ggsave(plot = groundUse.invert.model.zi.plot.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.PredictedScans.pdf", width = 6, height = 4)
+
+combined_ground_inv <- ggarrange(groundUse.invert.model.zi.plot, groundUse.invert.model.zi.plot.PredictedScans,
+                                 labels = c("A", "B"),
+                                 ncol = 2, nrow = 1)
+
+ggsave(plot = combined_ground_inv, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_ground_inv.pdf", width = 10, height = 4)
+```
+
+Ground use during fruit foraging
+
+For the horizontal and branch use datasets, we filtered to at least 2 branch scans. This time, we will filter that same original dataset to filter for canopy use scans. 
+
+Pre-filtering for ground use during fruit foraging 
+
+```{r}
+supportDF.fruit.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv")) 
+
+supportDF.fruit.all$Group <- as.factor(supportDF.fruit.all$Group)
+supportDF.fruit.all$AdjustedAge <- as.factor(supportDF.fruit.all$AdjustedAge)
+supportDF.fruit.all$AdjustedAgeSex <- as.factor(supportDF.fruit.all$AdjustedAgeSex)
+supportDF.fruit.all$Month_Yr <- format(as.Date(supportDF.fruit.all$Date), "%Y-%m") #adding a month-year column
+supportDF.fruit.all$Year <- format(as.Date(supportDF.fruit.all$Date), "%Y") #adding a year column
+supportDF.fruit.all$SexClass <- factor(supportDF.fruit.all$SexClass, levels = c("female", "male"))
+```
+
+Joining fruit biomass, rotation, summarizing by rotation
+
+```{r}
+supportDF.fruit.all <- supportDF.fruit.all %>%
+                       left_join(.,fruitBiomass, by = "Month_Yr")
+
+supportDF.fruit.all <- supportDF.fruit.all %>%
+                      left_join(., rotationTable, by = "Date" ) %>% #joining roation so we can group_by later
+                      mutate_at(vars("TemperatureMax", "TemperatureMin", "Rainfall", "MonthlyFruitBiomass_kg_ha"), list(~as.numeric(scale(.)))) #z-transform ecological variables
+
+supportDF.fruit.all <- supportDF.fruit.all %>%
+                           group_by(Rotation, Animal) %>%
+                           summarise(Month_Yr = mode(Month_Yr),
+                                     SexClass = unique(SexClass),
+                                     AgeClass = mode(AdjustedAge),
+                                     Group = mode(Group),
+                                     MeanTempMax = mean(TemperatureMax),
+                                     MeanTempMin = mean(TemperatureMin),
+                                     MeanRainfall = mean(Rainfall),
+                                     MonthlyFruitBiomass_kg_ha = mean(MonthlyFruitBiomass_kg_ha),
+                                     GroundScans = sum(GRO),
+                                     LowScans = sum(LOW),
+                                     MidScans = sum(MID),
+                                     UpperScans = sum(UPP),
+                                     TotalFruitForagingCanopyLevelScans = sum(GRO) + sum(LOW) + sum(MID) + sum(UPP))
+
+supportDF.fruit.all <- as.data.frame(supportDF.fruit.all)
+
+supportDF.fruit.all <- filter(supportDF.fruit.all, TotalFruitForagingCanopyLevelScans > 0)
+```
+
+Summary of data
+
+```{r}
+sum(supportDF.fruit.all$TotalFruitForagingCanopyLevelScans) #2128 foraging scans collected
+length(unique(supportDF.fruit.all$Animal)) #101 animals
+```
+
+Raw data visualization of ground use use during fruit foraging
+
+```{r}
+supportDF.fruit.all$AgeClass <- factor(supportDF.fruit.all$AgeClass, levels = c("infant", "small immature", "large immature", "adult"))
+
+raw.ground.fruit.plot <- ggplot(data = supportDF.fruit.all, aes(x = AgeClass, y = GroundScans, fill = SexClass)) +
+                         geom_violin(alpha = 0.5) +
+                         scale_fill_manual(values = c("mediumpurple2", "orange")) +
+                         scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
+                                          labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
+                         xlab("") + 
+                         ylab("\nGround use Scans during Fruit Foraging\n(Raw Counts per Rotation )\n") +
+                         geom_jitter(alpha = 5/10, height = 0, pch = 1) +
+                         theme_minimal() +
+                         theme(legend.position = "bottom",
+                               legend.title = element_blank()); raw.ground.fruit.plot
+
+ggsave(plot = raw.ground.fruit.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/raw.ground.fruit.plot.pdf", width = 6, height = 4)
+```
+
+GLMM exploring predictors of *ground use* during fruit foraging ## does not converge
+
+```{r}
+groundUse.fruit.model <- glmer(GroundScans ~ AdjustedAge +
+                                      SexClass +
+                                      (AdjustedAge*SexClass) +
+                                      #MeanRainfall +
+                                      #MeanTempMax +
+                                      #MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalFruitForagingCanopyLevelScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.fruit.all,
+                                      family = poisson(link = "log"))
+
+check_zeroinflation(groundUse.fruit.model, tolerance = 0.05)
+
+summary(groundUse.fruit.model)
+
+groundUse.fruit.model.zi <- glmmTMB(GroundScans ~ AgeClass +
+                                      SexClass +
+                                      (AgeClass*SexClass) +
+                                      #MeanRainfall +
+                                      #MeanTempMax +
+                                      #MonthlyFruitBiomass_kg_ha +
+                                      offset(log(TotalFruitForagingCanopyLevelScans)) + 
+                                      (1 | Animal), 
+                                      data = supportDF.fruit.all,
+                                      ziformula = ~0,
+                                      family = poisson)
+
+
+
+summary(groundUse.fruit.model.zi)
+tab_model(groundUse.fruit.model.zi)
+#plotting incidence rate ratio
+plot_model(groundUse.fruit.model,  
+           vline.color = "Grey", 
+           show.values = TRUE, 
+           rm.terms = c("MeanRainfall", "MeanTempMax", "MonthlyFruitBiomass_kg_ha"),
+           title = "",
+           group.terms = c(1,1,1,2,3,3,3),
+           colors = c("mediumpurple2", "orange", "burlywood4")) +
+           theme_minimal() -> groundUse.fruit.model.plot; groundUse.fruit.model.plot
+
+ggsave(plot = groundUse.invert.model.zi.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.pdf", width = 6, height = 4)
+
+plot_model(groundUse.invert.model.zi,  
+           vline.color = "Grey", 
+           show.values = TRUE,
+           title = "",
+           group.terms = c(1,1,1,2,3,4,5,6,6,6),
+           colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           theme_minimal() -> groundUse.invert.model.zi.plot.SI; groundUse.invert.model.zi.plot.SI
+
+ggsave(plot = groundUse.invert.model.zi.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.SI.pdf", width = 6, height = 4)
+
+groundUse.invert.model.zi.plot.PredictedScans <- plot_model(groundUse.invert.model.zi, 
+           type = "int", 
+           mdrt.values = "meansd",
+           title = "",
+           colors = c("burlywood3", "darkseagreen4")) +
+           xlab("") +
+           ylab("Predicted Counts of Ground Use Scans\n") +
+           #ylim(0,3) +
+           theme_minimal() +
+           theme(legend.title = element_blank()); groundUse.invert.model.zi.plot.PredictedScans
+
+ggsave(plot = groundUse.invert.model.zi.plot.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.PredictedScans.pdf", width = 10, height = 4)
+```
+

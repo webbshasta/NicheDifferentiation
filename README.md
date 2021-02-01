@@ -1,2 +1,0 @@
-# NicheDifferentiation
-Niche differentiation analysis
