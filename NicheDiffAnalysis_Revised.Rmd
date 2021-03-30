@@ -11,16 +11,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Niche Differentiation Project
 
-#### Rachel Williamson, Shasta Webb, Amanda Melin
+Animal Behaviour [ANBEH-D-20-00750R1]
+
+Shasta Webb, Rachel Williamson, Saul Cheves Hernandez, Linda Fedigan, Amanda Melin
 
 #### 2021
 
 This analysis explores niche differentiation between capuchin sex and age classes.
 
+#####NOTES
+
+We have posted the data to Dryad DOI (https://doi.org/10.5061/dryad.q2bvq83jcand). All CSV files used in this analysis are available for download there. 
+
 ##### Loading required packages and dependencies
 
 ```{r, echo = FALSE, results = 'hide', message=FALSE}
-library(readr); library(dplyr); library(car); library(ggplot2); library(lme4);  library(car); library(emmeans); library(multcomp); library(multcompView); library(gridExtra); library(lubridate); library(fuzzyjoin); library(ggpubr); library(glmmTMB); library(performance); library(effects); library(sjPlot)
+library(readr); library(dplyr); library(car); library(ggplot2); library(lme4);  library(car); library(emmeans); library(multcomp); library(multcompView); library(gridExtra); library(lubridate); library(fuzzyjoin); library(ggpubr); library(glmmTMB); library(performance); library(effects); library(sjPlot); library(tidyr)
 ```
 
 ##### Load required functions
@@ -33,28 +39,34 @@ mode <- function(x) { names(which.max(table(x))) }
 
 ```{r}
 #local version
-rotationTable <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/rotationDate16_17_Dryad.csv"))
+#rotationTable <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/rotationDate16_17_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+rotationTable <- as.data.frame(read.csv("rotationDate16_17_Dryad.csv"))
 ```
 
 ##### Reading in monthly fruit biomass data
 
 ```{r}
 #local version
-fruitBiomass <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/MonthlyFruitBiomass_Dryad.csv"))
+#fruitBiomass <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/MonthlyFruitBiomass_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+fruitBiomass <- as.data.frame(read.csv("MonthlyFruitBiomass_Dryad.csv"))
 ```
 
 Summary of behaviors & strata
 
 ```{r}
 #summaries of foraging behavior
-df.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
-names(df.summary)
+#df.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
+
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+df.summary <- as.data.frame(read.csv("IndividScanStatesXDays_Dryad.csv"))
 
 df.summary$AgeSex <- factor(df.summary$AgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
 
@@ -85,8 +97,13 @@ write.csv(df.summary, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/beha
 Support summaries inverterbrate foraging
 
 ```{r}
-support.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv")) 
-names(support.summary)
+#local version
+#support.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv")) 
+
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+support.summary <- as.data.frame(read.csv("IndividHabitatInvertebrateScansXD_Days_Dryad.csv")) 
+
 
 support.summary$AdjustedAgeSex <- factor(support.summary$AdjustedAgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
 
@@ -164,7 +181,12 @@ write.csv(support.inv, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/sup
 Support summaries fruit
 
 ```{r}
-summary.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv"))
+#local version
+#summary.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv"))
+
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+summary.fruit <- as.data.frame(read.csv("IndividHabitatFruitScansXDays.csv"))
 
 summary.fruit$AdjustedAgeSex <- factor(summary.fruit$AdjustedAgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
 
@@ -247,10 +269,12 @@ write.csv(support.fruit, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/s
 Reading in individual scan data across all behaviours 
 
 ```{r}
-df.overallStates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
+#local version
+#df.overallStates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+df.overallStates <- as.data.frame(read.csv("IndividScanStatesXDays_Dryad.csv"))
 
 df.overallStates$AgeClass <- as.factor(df.overallStates$AgeClass)
 df.overallStates$AgeSex <- as.factor(df.overallStates$AgeSex)
@@ -413,10 +437,12 @@ ggsave(plot = combiined_fruitScanPlot, filename = "~/Desktop/Manuscripts/Submitt
 Reading in data 
 
 ```{r}
-dfh1.difficulty <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/FruitDifficultyScansXDays_Dryad.csv"))
+#local version
+#dfh1.difficulty <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/FruitDifficultyScansXDays_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+dfh1.difficulty <- as.data.frame(read.csv("FruitDifficultyScansXDays_Dryad.csv"))
 
 dfh1.difficulty$Group <- as.factor(dfh1.difficulty$Group)
 dfh1.difficulty$AgeClass <- as.factor(dfh1.difficulty$AgeClass)
@@ -554,10 +580,12 @@ ggsave(plot = combined_easyFruitScanPlot_SI, filename = "~/Desktop/Manuscripts/S
 Pre-filtering
 
 ```{r}
-dfh1.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
+#local version
+#dfh1.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+dfh1.invertebrates <- as.data.frame(read.csv("IndividScanStatesXDays_Dryad.csv"))
 
 dfh1.invertebrates$AgeClass <- as.factor(dfh1.invertebrates$AgeClass)
 dfh1.invertebrates$AgeSex <- as.factor(dfh1.invertebrates$AgeSex)
@@ -717,10 +745,12 @@ ggsave(plot = combined_gleanedInvPlot, filename = "~/Desktop/Manuscripts/Submitt
 Pre-filtering for invertebrate foraging & branch use
 
 ```{r}
-supportDF.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
+#local version
+#supportDF.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+supportDF.invertebrates <- as.data.frame(read.csv("IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
 
 supportDF.invertebrates$Group <- as.factor(supportDF.invertebrates$Group)
 supportDF.invertebrates$AgeClass <- as.factor(supportDF.invertebrates$AgeClass)
@@ -871,7 +901,14 @@ ggsave(plot = combined_SmBranch_InvModel, filename = "~/Desktop/Manuscripts/Subm
 Preparing data for fruit foraging & branch use
 
 ```{r}
-supportDF.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv"))
+#local version
+#supportDF.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv"))
+
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+supportDF.fruit <- as.data.frame(read.csv("IndividHabitatFruitScansXDays_Dryad.csv"))
+
+
 supportDF.fruit$AgeClass <- as.factor(supportDF.fruit$AgeClass)
 supportDF.fruit$AgeSex <- as.factor(supportDF.fruit$AgeSex)
 supportDF.fruit$Month_Yr <- format(as.Date(supportDF.fruit$Date), "%Y-%m") #adding a month-year column
@@ -880,10 +917,12 @@ supportDF.fruit$SexClass <- factor(supportDF.fruit$SexClass, levels = c("female"
 ```
 
 ```{r}
-rotationTable2017 <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/RotationsREW_Dryad.csv"))
+#local version
+#rotationTable2017 <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/RotationsREW_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+rotationTable2017 <- as.data.frame(read.csv("RotationsREW_Dryad.csv"))
 ```
 
 Adding fruit biomass to the df
@@ -1203,10 +1242,12 @@ For the horizontal and branch use datasets, we filtered to at least 2 branch sca
 Pre-filtering for arboreal invertebrate foraging 
 
 ```{r}
-supportDF.invertebrates.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
+#local version
+#supportDF.invertebrates.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+supportDF.invertebrates.arboreal <- as.data.frame(read.csv("IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
 
 supportDF.invertebrates.arboreal$AgeClass <- as.factor(supportDF.invertebrates.arboreal$AgeClass)
 supportDF.invertebrates.arboreal$AgeSex <- as.factor(supportDF.invertebrates.arboreal$AgeSex)
@@ -1358,10 +1399,12 @@ ggsave(plot = combined_upperUse_inv, filename = "~/Desktop/Manuscripts/Submitted
 Filtering for upper canopy use during arboreal fruit foraging
 
 ```{r}
-supportDF.fruits.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv")) 
+#local version
+#supportDF.fruits.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv")) 
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+supportDF.fruits.arboreal <- as.data.frame(read.csv("IndividHabitatFruitScansXDays_Dryad.csv")) 
 
 supportDF.fruits.arboreal$AgeClass <- as.factor(supportDF.fruits.arboreal$AgeClass)
 supportDF.fruits.arboreal$AgeSex <- as.factor(supportDF.fruits.arboreal$AgeSex)
@@ -1508,10 +1551,12 @@ For the vertical and branch use datasets, we filtered to at least 2 branch scans
 Pre-filtering for arboreal invertebrate foraging 
 
 ```{r}
-supportDF.invertebrates.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv")) 
+#local version
+#supportDF.invertebrates.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv")) 
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+supportDF.invertebrates.all <- as.data.frame(read.csv("IndividHabitatInvertebrateScansXD_Days_Dryad.csv")) 
 
 supportDF.invertebrates.all$AgeClass <- as.factor(supportDF.invertebrates.all$AgeClass)
 supportDF.invertebrates.all$AgeSex <- as.factor(supportDF.invertebrates.all$AgeSex)
@@ -1665,10 +1710,12 @@ For the horizontal and branch use datasets, we filtered to at least 2 branch sca
 Pre-filtering for ground use during fruit foraging 
 
 ```{r}
-supportDF.fruit.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv")) 
+#local version
+#supportDF.fruit.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv")) 
 
 #Dryad DOI
 #DOI https://doi.org/10.5061/dryad.q2bvq83jc
+supportDF.fruit.all <- as.data.frame(read.csv("IndividHabitatFruitScansXDays_Dryad.csv")) 
 
 supportDF.fruit.all$AgeClass <- as.factor(supportDF.fruit.all$AgeClass)
 supportDF.fruit.all$AgeSex <- as.factor(supportDF.fruit.all$AgeSex)
