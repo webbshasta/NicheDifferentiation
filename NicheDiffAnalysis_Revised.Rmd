@@ -32,36 +32,34 @@ mode <- function(x) { names(which.max(table(x))) }
 ##### Reading in rotation table
 
 ```{r}
-rotationTable <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/rotationDate16_17.csv"))
-rotationTable <- distinct(rotationTable)
-```
+#local version
+rotationTable <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/rotationDate16_17_Dryad.csv"))
 
-##### Reading in birth date data
-
-```{r}
-birthDate <-  as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/Birthdate_SSR.csv"))
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
 ```
 
 ##### Reading in monthly fruit biomass data
 
 ```{r}
-fruitBiomass <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/MonthlyFruitBiomass_copy.csv"))
+#local version
+fruitBiomass <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/MonthlyFruitBiomass_Dryad.csv"))
 
-#creating a month/year column for left joining to behavioural data
-fruitBiomass$Month_Yr <- format(as.Date(fruitBiomass$YearOf), "%Y-%m")
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
 ```
 
 Summary of behaviors & strata
 
 ```{r}
 #summaries of foraging behavior
-df.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
+df.summary <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
 names(df.summary)
 
-df.summary$AdjustedAgeSex <- factor(df.summary$AdjustedAgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
+df.summary$AgeSex <- factor(df.summary$AgeSex, levels = c("IF", "IM", "SIMF", "SIMM", "LIMF", "LIMM", "AF", "AM"))
 
 df.summary <- df.summary %>%
-                    group_by(AdjustedAgeSex) %>%
+                    group_by(AgeSex) %>%
                     dplyr::summarise(
                               FruitScans_mean = mean(FruitScans),
                               FruitScans_sd = sd(FruitScans),
@@ -249,14 +247,16 @@ write.csv(support.fruit, "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/s
 Reading in individual scan data across all behaviours 
 
 ```{r}
-df.overallStates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
+df.overallStates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
 
-df.overallStates$Group <- as.factor(df.overallStates$Group)
-df.overallStates$AdjustedAge <- as.factor(df.overallStates$AdjustedAge)
-df.overallStates$AdjustedAgeSex <- as.factor(df.overallStates$AdjustedAgeSex)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+df.overallStates$AgeClass <- as.factor(df.overallStates$AgeClass)
+df.overallStates$AgeSex <- as.factor(df.overallStates$AgeSex)
 df.overallStates$Month_Yr <- format(as.Date(df.overallStates$Date), "%Y-%m") #adding a month-year column
 df.overallStates$Year <- format(as.Date(df.overallStates$Date), "%Y") #adding a year column
-df.overallStates$Sex.Class <- factor(df.overallStates$Sex.Class, levels = c("female", "male"))
+df.overallStates$SexClass <- factor(df.overallStates$SexClass, levels = c("female", "male"))
 ```
 
 Adding fruit biomass data to df.overallStates
@@ -268,7 +268,7 @@ df.overallStates <- left_join(df.overallStates, fruitBiomass, by = "Month_Yr")
 Summary of all data collected, pre-filtering
 
 ```{r}
-sum(df.overallStates$TotalScans) #30744 foraging scans collected
+sum(df.overallStates$TotalScans) #30744  scans collected
 length(unique(df.overallStates$Animal)) #113 animals
 length(unique(df.overallStates$Date)) #190 contact days
 ```
@@ -282,10 +282,10 @@ df.overallStates <- df.overallStates %>%
 
 df.overallStates <- df.overallStates %>%
                     group_by(Rotation, Animal) %>%
-                    dplyr::summarise(Group = unique(Group),
+                    dplyr::summarise(
                               Month_Yr = mode(Month_Yr),
-                              AgeClass = mode(AdjustedAge),
-                              SexClass = unique(Sex.Class),
+                              AgeClass = mode(AgeClass),
+                              SexClass = unique(SexClass),
                               MeanTempMax = mean(TemperatureMax),
                               MeanTempMin = mean(TemperatureMin),
                               MeanRainfall = mean(Rainfall),
@@ -293,7 +293,7 @@ df.overallStates <- df.overallStates %>%
                               FruitScans = sum(FruitScans),
                               TotalForagingScans = sum(TotalForagingScans)) 
 
-df.overallStates <- filter(df.overallStates, TotalForagingScans > 0)
+df.overallStates <- filter(df.overallStates, TotalForagingScans > 0) #because we are focused on foraging, filter out rows in which foraging was not observed
 ```
 
 Summary of data post-filtering
@@ -369,6 +369,7 @@ plot_model(overallStates.glmm.zi,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Fruit Scan Frequency per Rotation)") +
+           ylim(0.4,2.5) +
            theme_minimal() -> overallStates.plot; overallStates.plot
 
 ggsave(plot = overallStates.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/overallStates.plot.pdf", width = 6, height = 4)
@@ -380,12 +381,14 @@ plot_model(overallStates.glmm.zi,
            group.terms = c(1,1,1,2,3,4,5,6,6,6),
            colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
            ylab("\nIncidence Rate Ratios for Fruit Scan Counts per Rotation") +
+            ylim(0.4,2.5) +
            theme_minimal() -> overallStates.plot.SI; overallStates.plot.SI
 
 ggsave(plot = overallStates.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/overallStates.plot.SI.pdf", width = 6, height = 4)
 
 overallStates.plot.PredictedScans <- plot_model(overallStates.glmm.zi, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
@@ -410,11 +413,14 @@ ggsave(plot = combiined_fruitScanPlot, filename = "~/Desktop/Manuscripts/Submitt
 Reading in data 
 
 ```{r}
-dfh1.difficulty <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/FruitDifficultyScansXDays.csv"))
+dfh1.difficulty <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/FruitDifficultyScansXDays_Dryad.csv"))
+
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
 
 dfh1.difficulty$Group <- as.factor(dfh1.difficulty$Group)
-dfh1.difficulty$AdjustedAge <- as.factor(dfh1.difficulty$AdjustedAge)
-dfh1.difficulty$AdjustedAgeSex <- as.factor(dfh1.difficulty$AdjustedAgeSex)
+dfh1.difficulty$AgeClass <- as.factor(dfh1.difficulty$AgeClass)
+dfh1.difficulty$AgeSex <- as.factor(dfh1.difficulty$AgeSex)
 dfh1.difficulty$Month_Yr <- format(as.Date(dfh1.difficulty$Date), "%Y-%m") #adding a month-year column
 dfh1.difficulty$Year <- format(as.Date(dfh1.difficulty$Date), "%Y") #adding a year column
 dfh1.difficulty$SexClass <- factor(dfh1.difficulty$SexClass, levels = c("Female", "Male"))
@@ -426,8 +432,6 @@ Adding fruit biomass data to df.overallStates
 dfh1.difficulty <- left_join(dfh1.difficulty, fruitBiomass, by = "Month_Yr")
 ```
 
-Filtering for individuals who were only in study <2 months, and who had very few scans
-
 ```{r}
 dfh1.difficulty <- dfh1.difficulty %>%
                     left_join(., rotationTable, by = "Date") %>% #joining roation so we can group_by later
@@ -435,9 +439,9 @@ dfh1.difficulty <- dfh1.difficulty %>%
 
 dfh1.difficulty <- dfh1.difficulty %>%
                     group_by(Rotation, Animal) %>%
-                    summarise(Group = unique(Group),
+                    summarise(
                               Month_Yr = mode(Month_Yr),
-                              AgeClass = mode(AdjustedAge),
+                              AgeClass = mode(AgeClass),
                               SexClass = unique(SexClass),
                               MeanTempMax = mean(TemperatureMax),
                               MeanTempMin = mean(TemperatureMin),
@@ -506,6 +510,7 @@ plot_model(easyFruitScans.glmm,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Easy Fruit Frequency per Rotation") +
+           ylim(0.2,3) +
            theme_minimal() -> easyFruitScans.glmm.plot; easyFruitScans.glmm.plot
 
 ggsave(plot = easyFruitScans.glmm.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/easyFruitScans.glmm.plot.pdf", width = 6, height = 4)
@@ -516,12 +521,14 @@ plot_model(easyFruitScans.glmm,
            title = "",
            group.terms = c(1,1,1,2,3,4,5,6,6,6),
            colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           ylim(0.2,3) +
            theme_minimal() -> easyFruitScans.glmm.plot.SI; easyFruitScans.glmm.plot.SI
 
 ggsave(plot = easyFruitScans.glmm.zi.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/easyFruitScans.glmm.zi.plot.SI.pdf", width = 6, height = 4)
 
 easyFruitScans.plot.PredictedScans <- plot_model(easyFruitScans.glmm, 
            type = "int", 
+           dodge= 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
@@ -547,14 +554,16 @@ ggsave(plot = combined_easyFruitScanPlot_SI, filename = "~/Desktop/Manuscripts/S
 Pre-filtering
 
 ```{r}
-dfh1.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays.csv"))
+dfh1.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividScanStatesXDays_Dryad.csv"))
 
-dfh1.invertebrates$Group <- as.factor(dfh1.invertebrates$Group)
-dfh1.invertebrates$AdjustedAge <- as.factor(dfh1.invertebrates$AdjustedAge)
-dfh1.invertebrates$AdjustedAgeSex <- as.factor(dfh1.invertebrates$AdjustedAgeSex)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+dfh1.invertebrates$AgeClass <- as.factor(dfh1.invertebrates$AgeClass)
+dfh1.invertebrates$AgeSex <- as.factor(dfh1.invertebrates$AgeSex)
 dfh1.invertebrates$Month_Yr <- format(as.Date(dfh1.invertebrates$Date), "%Y-%m") #adding a month-year column
 dfh1.invertebrates$Year <- format(as.Date(dfh1.invertebrates$Date), "%Y") #adding a year column
-dfh1.invertebrates$Sex.Class <- factor(dfh1.invertebrates$Sex.Class, levels = c("female", "male"))
+dfh1.invertebrates$SexClass <- factor(dfh1.invertebrates$SexClass, levels = c("female", "male"))
 ```
 
 Joining rotation, fruit biomass
@@ -569,11 +578,10 @@ dfh1.invertebrates <- dfh1.invertebrates %>%
 
 dfh1.invertebrates <- dfh1.invertebrates %>%
                       group_by(Rotation, Animal) %>%
-                      summarise(AdjustedAgeSex = mode(AdjustedAgeSex),
-                              AgeClass = mode(AdjustedAge),
+                      summarise(AgeSex = mode(AgeSex),
+                              AgeClass = mode(AgeClass),
                               Month_Yr = mode(Month_Yr),
-                              SexClass = unique(Sex.Class),
-                              Group = unique(Group),
+                              SexClass = unique(SexClass),
                               MeanTempMax = mean(TemperatureMax),
                               MeanTempMin = mean(TemperatureMin),
                               MeanRainfall = mean(Rainfall),
@@ -664,6 +672,7 @@ plot_model(gleanedInvert.glmm,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Gleaned Invertebrate Frequency per Rotation)") +
+           ylim(.5,1.5) +
            theme_minimal() -> gleanedInvert.glmm.plot; gleanedInvert.glmm.plot
 
 ggsave(plot = gleanedInvert.glmm.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/gleanedInvert.glmm.plot.pdf", width = 6, height = 4)
@@ -674,12 +683,14 @@ plot_model(gleanedInvert.glmm,
            title = "",
            group.terms = c(1,1,1,2,3,4,5,6,6,6),
            colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+            ylim(.5,1.5) +
            theme_minimal() -> gleanedInvert.glmm.plot.SI; gleanedInvert.glmm.plot.SI
 
 ggsave(plot = gleanedInvert.glmm.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/gleanedInvert.glmm.plot.SI.pdf", width = 6, height = 4)
 
 gleanedInvert.glmm.plot.PredictedScans <- plot_model(gleanedInvert.glmm, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
@@ -706,11 +717,14 @@ ggsave(plot = combined_gleanedInvPlot, filename = "~/Desktop/Manuscripts/Submitt
 Pre-filtering for invertebrate foraging & branch use
 
 ```{r}
-supportDF.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv"))
+supportDF.invertebrates <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
+
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
 
 supportDF.invertebrates$Group <- as.factor(supportDF.invertebrates$Group)
-supportDF.invertebrates$AdjustedAge <- as.factor(supportDF.invertebrates$AdjustedAge)
-supportDF.invertebrates$AdjustedAgeSex <- as.factor(supportDF.invertebrates$AdjustedAgeSex)
+supportDF.invertebrates$AgeClass <- as.factor(supportDF.invertebrates$AgeClass)
+supportDF.invertebrates$AgeSex <- as.factor(supportDF.invertebrates$AgeSex)
 supportDF.invertebrates$Month_Yr <- format(as.Date(supportDF.invertebrates$Date), "%Y-%m") #adding a month-year column
 supportDF.invertebrates$Year <- format(as.Date(supportDF.invertebrates$Date), "%Y") #adding a year column
 supportDF.invertebrates$SexClass <- factor(supportDF.invertebrates$SexClass, levels = c("female", "male"))
@@ -731,10 +745,10 @@ supportDF.invertebrates <- supportDF.invertebrates %>%
 
 supportDF.invertebrates <- supportDF.invertebrates %>%
                            group_by(Rotation, Animal) %>%
+                           drop_na(Smbr) %>%
                            summarise(Month_Yr = mode(Month_Yr),
                                      SexClass = unique(SexClass),
-                                     AgeClass = mode(AdjustedAge),
-                                     Group = mode(Group),
+                                     AgeClass = mode(AgeClass),
                                      MeanTempMax = mean(TemperatureMax),
                                      MeanTempMin = mean(TemperatureMin),
                                      MeanRainfall = mean(Rainfall),
@@ -811,10 +825,13 @@ plot_model(branchUse.invertebrate.model,
            title = "",
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
+           ylim(0.5,1.5) +
            theme_minimal() +
-           ylab("\nIncidence Rate Ratios \n(Small Branch Scans per Rotation\nduring Invertebrate Foraging Scans)\n") -> branchUse.invertebrate.model.plot; branchUse.invertebrate.model.plot
+           ylab("\nSmall Branch Use\n(Incidence Rate Ratios)") -> branchUse.invertebrate.model.plot; branchUse.invertebrate.model.plot
 
 ggsave(plot = branchUse.invertebrate.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.invertebrate.model.plot.pdf", width = 6, height = 4)
+
+sjPlot::get_term_labels(branchUse.invertebrate.model)
 
 plot_model(branchUse.invertebrate.model,  
            vline.color = "Grey", 
@@ -822,17 +839,19 @@ plot_model(branchUse.invertebrate.model,
            title = "",
            group.terms = c(1,1,1,2,3,4,5,6,6,6),
            colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           ylim(0.5,1.5) +
            theme_minimal() -> branchUse.invertebrate.model.plot.SI; branchUse.invertebrate.model.plot.SI
 
 ggsave(plot = branchUse.invertebrate.model.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.invertebrate.model.plot.SI.pdf", width = 6, height = 4)
 
 branchUse.invertebrate.model.plot.SI.PredictedScans <- plot_model(branchUse.invertebrate.model, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
            xlab("") +
-           ylab("Predicted Counts\n(Small Branch Scans per Rotation\nduring Invertebrate Foraging)\n") +
+           ylab("Small Branch Use\n(Predicted Scans per Rotation)\n") +
            scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
                                           labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
            ylim(0,7) +
@@ -844,29 +863,27 @@ ggsave(plot = branchUse.invertebrate.model.plot.SI.PredictedScans, filename = "~
 
 combined_SmBranch_InvModel <- ggarrange(branchUse.invertebrate.model.plot, branchUse.invertebrate.model.plot.SI.PredictedScans,
           labels = c("A", "B"),
-          ncol = 2, nrow = 1)
+          ncol = 2, nrow = 1); combined_SmBranch_InvModel
 
-ggsave(plot = combined_SmBranch_InvModel, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_SmBranch_InvModel.pdf", width = 10, height = 4)
+ggsave(plot = combined_SmBranch_InvModel, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/Figure3_NicheDiff.pdf", width = 10, height = 4)
 ```
 
 Preparing data for fruit foraging & branch use
 
 ```{r}
-supportDF.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv"))
-supportDF.fruit$Group <- as.factor(supportDF.fruit$Group)
-supportDF.fruit$AdjustedAge <- as.factor(supportDF.fruit$AdjustedAge)
-supportDF.fruit$AdjustedAgeSex <- as.factor(supportDF.fruit$AdjustedAgeSex)
+supportDF.fruit <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv"))
+supportDF.fruit$AgeClass <- as.factor(supportDF.fruit$AgeClass)
+supportDF.fruit$AgeSex <- as.factor(supportDF.fruit$AgeSex)
 supportDF.fruit$Month_Yr <- format(as.Date(supportDF.fruit$Date), "%Y-%m") #adding a month-year column
 supportDF.fruit$Year <- format(as.Date(supportDF.fruit$Date), "%Y") #adding a year column
 supportDF.fruit$SexClass <- factor(supportDF.fruit$SexClass, levels = c("female", "male"))
 ```
 
 ```{r}
-rotationTable2017 <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/RotationsREW.csv"))
+rotationTable2017 <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/RotationsREW_Dryad.csv"))
 
-rotationTable2017 <- rotationTable2017 %>%
-                     dplyr::select(DateOf, Rotation) %>%
-                     rename(Date = DateOf)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
 ```
 
 Adding fruit biomass to the df
@@ -887,10 +904,9 @@ mode <- function(x) { names(which.max(table(x))) }
 supportDF.fruit <- supportDF.fruit %>%
                    group_by(Rotation, Animal) %>%
                    summarise(Month_Yr = mode(Month_Yr),
-                             AdjustedAgeSex = mode(AdjustedAgeSex),
-                             AgeClass = mode(AdjustedAge),
+                             AgeSex = mode(AgeSex),
+                             AgeClass = mode(AgeClass),
                              SexClass = unique(SexClass),
-                             Group = mode(Group),
                              MeanTempMax = mean(TemperatureMax),
                              MeanTempMin = mean(TemperatureMin),
                              MeanRainfall = mean(Rainfall),
@@ -967,6 +983,7 @@ plot_model(branchUse.fruit.model,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Small Branch Frequency during\nFruit Foraging per Rotation\n") +
+           ylim(0.25,2) +
            theme_minimal() -> branchUse.fruit.model.plot; branchUse.fruit.model.plot
 
 ggsave(plot = branchUse.fruit.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/branchUse.fruit.model.plot.pdf", width = 6, height = 4)
@@ -983,6 +1000,7 @@ ggsave(plot = branchUse.fruit.model.plot.SI, filename = "~/Desktop/Manuscripts/S
 
 branchUse.fruit.model.plot.SI.PredictedScans <- plot_model(branchUse.fruit.model, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
@@ -1017,7 +1035,7 @@ raw.vertical.invertebrate.plot <- ggplot(data = supportDF.invertebrates, aes(x =
                          scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
                                           labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
                          xlab("") + 
-                         ylab("\nVertical Branch Scans during Invertebrate Foraging\n(Raw Counts per Rotation)\n") +
+                         ylab("\nVertical Branch Invertebrate Foraging Scans\n(Raw Counts per Rotation)\n") +
                          geom_jitter(alpha = 5/10, height = 0, pch = 1) +
                          theme_minimal() +
                          theme(legend.position = "bottom",
@@ -1053,6 +1071,7 @@ plot_model(vertUse.invertebrate.model,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Vertical Scans Frequency\nduring Invertebrate Foraging per Rotation") +
+           ylim(0.5,2) +
            theme_minimal() -> vertUse.invertebrate.model.plot; vertUse.invertebrate.model.plot
 
 ggsave(plot = vertUse.invertebrate.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.invertebrate.model.zi.plot.pdf", width = 6, height = 4)
@@ -1069,6 +1088,7 @@ ggsave(plot = vertUse.invertebrate.model.SI, filename = "~/Desktop/Manuscripts/S
 
 vertUse.invertebrate.model.SI.PredictedScans <- plot_model(vertUse.invertebrate.model, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
@@ -1101,7 +1121,7 @@ raw.vert.fruit.plot <- ggplot(data = supportDF.fruit, aes(x = AgeClass, y = Vert
                          scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
                                           labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
                          xlab("") + 
-                         ylab("\nVertical Branch Scans during Fruit Foraging\n(Raw Counts per Rotation)\n") +
+                         ylab("\nVertical Branch Fruit Foraging Scans\n(Raw Counts per Rotation)\n") +
                          geom_jitter(alpha = 5/10, height = 0, pch = 1) +
                          theme_minimal() +
                          theme(legend.position = "bottom",
@@ -1137,6 +1157,7 @@ plot_model(vertUse.fruit.model,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Vertical Branch Use Frequency\nduring Fruit Foraging per Rotation\n") +
+           ylim(0.4,3) +
            theme_minimal() -> vertUse.fruit.model.plot; vertUse.fruit.model.plot
 
 ggsave(plot = vertUse.fruit.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/vertUse.fruit.model.plot.pdf", width = 6, height = 4)
@@ -1154,6 +1175,7 @@ ggsave(plot = vertUse.fruit.model.SI, filename = "~/Desktop/Manuscripts/Submitte
 vertUse.fruit.model.PredictedScans <- plot_model(vertUse.fruit.model, 
            type = "int", 
            mdrt.values = "meansd",
+           dodge = 0.25,
            title = "",
            colors = c("mediumpurple2", "orange")) +
            xlab("") +
@@ -1181,11 +1203,13 @@ For the horizontal and branch use datasets, we filtered to at least 2 branch sca
 Pre-filtering for arboreal invertebrate foraging 
 
 ```{r}
-supportDF.invertebrates.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv"))
+supportDF.invertebrates.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv"))
 
-supportDF.invertebrates.arboreal$Group <- as.factor(supportDF.invertebrates.arboreal$Group)
-supportDF.invertebrates.arboreal$AdjustedAge <- as.factor(supportDF.invertebrates.arboreal$AdjustedAge)
-supportDF.invertebrates.arboreal$AdjustedAgeSex <- as.factor(supportDF.invertebrates.arboreal$AdjustedAgeSex)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+supportDF.invertebrates.arboreal$AgeClass <- as.factor(supportDF.invertebrates.arboreal$AgeClass)
+supportDF.invertebrates.arboreal$AgeSex <- as.factor(supportDF.invertebrates.arboreal$AgeSex)
 supportDF.invertebrates.arboreal$Month_Yr <- format(as.Date(supportDF.invertebrates.arboreal$Date), "%Y-%m") #adding a month-year column
 supportDF.invertebrates.arboreal$Year <- format(as.Date(supportDF.invertebrates.arboreal$Date), "%Y") #adding a year column
 supportDF.invertebrates.arboreal$SexClass <- factor(supportDF.invertebrates.arboreal$SexClass, levels = c("female", "male"))
@@ -1205,8 +1229,7 @@ supportDF.invertebrates.arboreal <- supportDF.invertebrates.arboreal %>%
                            group_by(Rotation, Animal) %>%
                            summarise(Month_Yr = mode(Month_Yr),
                                      SexClass = unique(SexClass),
-                                     AgeClass = mode(AdjustedAge),
-                                     Group = mode(Group),
+                                     AgeClass = mode(AgeClass),
                                      MeanTempMax = mean(TemperatureMax),
                                      MeanTempMin = mean(TemperatureMin),
                                      MeanRainfall = mean(Rainfall),
@@ -1290,6 +1313,7 @@ plot_model(upperUse.invert.model.zi,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\n(Upper Canopy Scan Frequency\nduring Invertebrate Foraging per Rotation\n") +
+           ylim(0.5,2) +
            theme_minimal() -> upperUse.invert.model.zi.plot; upperUse.invert.model.zi.plot
 
 ggsave(plot = upperUse.invert.model.zi.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.invert.model.zi.plot.pdf", width = 6, height = 4)
@@ -1300,12 +1324,14 @@ plot_model(upperUse.invert.model.zi,
            title = "",
            group.terms = c(1,1,1,2,3,4,5,6,6,6),
            colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           ylim(0.5,2) +
            theme_minimal() -> upperUse.invert.model.zi.plot.SI; upperUse.invert.model.zi.plot.SI
 
 ggsave(plot = upperUse.invert.model.zi.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.invert.model.zi.plot.SI.pdf", width = 6, height = 4)
 
 upperUse.invert.model.zi.plot.SI.PredictedScans <- plot_model(upperUse.invert.model.zi, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
@@ -1332,11 +1358,13 @@ ggsave(plot = combined_upperUse_inv, filename = "~/Desktop/Manuscripts/Submitted
 Filtering for upper canopy use during arboreal fruit foraging
 
 ```{r}
-supportDF.fruits.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv")) 
+supportDF.fruits.arboreal <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv")) 
 
-supportDF.fruits.arboreal$Group <- as.factor(supportDF.fruits.arboreal$Group)
-supportDF.fruits.arboreal$AdjustedAge <- as.factor(supportDF.fruits.arboreal$AdjustedAge)
-supportDF.fruits.arboreal$AdjustedAgeSex <- as.factor(supportDF.fruits.arboreal$AdjustedAgeSex)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+supportDF.fruits.arboreal$AgeClass <- as.factor(supportDF.fruits.arboreal$AgeClass)
+supportDF.fruits.arboreal$AgeSex <- as.factor(supportDF.fruits.arboreal$AgeSex)
 supportDF.fruits.arboreal$Month_Yr <- format(as.Date(supportDF.fruits.arboreal$Date), "%Y-%m") #adding a month-year column
 supportDF.fruits.arboreal$Year <- format(as.Date(supportDF.fruits.arboreal$Date), "%Y") #adding a year column
 supportDF.fruits.arboreal$SexClass <- factor(supportDF.fruits.arboreal$SexClass, levels = c("female", "male"))
@@ -1356,8 +1384,7 @@ supportDF.fruits.arboreal <- supportDF.fruits.arboreal %>%
                            group_by(Rotation, Animal) %>%
                            summarise(Month_Yr = mode(Month_Yr),
                                      SexClass = unique(SexClass),
-                                     AgeClass = mode(AdjustedAge),
-                                     Group = mode(Group),
+                                     AgeClass = mode(AgeClass),
                                      MeanTempMax = mean(TemperatureMax),
                                      MeanTempMin = mean(TemperatureMin),
                                      MeanRainfall = mean(Rainfall),
@@ -1417,7 +1444,7 @@ upperUse.fruit.model <- glmer(UpperScans ~ AgeClass +
                                       MeanTempMax +
                                       MonthlyFruitBiomass_kg_ha +
                                       offset(log(TotalFruitForagingArborealScans)) + 
-                                      (1 | Group/Animal), 
+                                      (1 | Animal), 
                                       data = supportDF.fruits.arboreal,
                                       family = poisson(link = "log"))
 
@@ -1434,6 +1461,7 @@ plot_model(upperUse.fruit.model,
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
            ylab("\nIncidence Rate Ratios\nUpper Canopy Scan Frequency during\nFruit Foraging per Rotation\n") +
+           ylim(0.1,4) +
            theme_minimal() -> upperUse.fruit.model.plot; upperUse.fruit.model.plot
 
 ggsave(plot = upperUse.fruit.model.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.fruit.model.plot.pdf", width = 6, height = 4)
@@ -1444,17 +1472,19 @@ plot_model(upperUse.fruit.model,
            title = "",
            group.terms = c(1,1,1,2,3,4,5,6,6,6),
            colors = c("darkseagreen3", "tan", "tomato1", "skyblue1", "lightpink", "burlywood4")) +
+           ylim(0.1,4) +
            theme_minimal() -> upperUse.fruit.model.plot.SI; upperUse.fruit.model.plot.SI
 
 ggsave(plot = upperUse.fruit.model.plot.SI, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/upperUse.fruit.model.plot.SI.pdf", width = 6, height = 4)
 
 upperUse.fruit.model.plot.SI.PredictedScans <- plot_model(upperUse.fruit.model, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
            xlab("") +
-           ylab("\nPredicted Counts\n(Upper Canopy Scans\n during Fruit Foraging per Rotation\n") +
+           ylab("\nPredicted Counts\n(Upper Canopy Scans\n during Fruit Foraging per Rotation)\n") +
            ylim(0,2) +
            theme_minimal() +
            scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
@@ -1478,11 +1508,13 @@ For the vertical and branch use datasets, we filtered to at least 2 branch scans
 Pre-filtering for arboreal invertebrate foraging 
 
 ```{r}
-supportDF.invertebrates.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXDays.csv")) 
+supportDF.invertebrates.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatInvertebrateScansXD_Days_Dryad.csv")) 
 
-supportDF.invertebrates.all$Group <- as.factor(supportDF.invertebrates.all$Group)
-supportDF.invertebrates.all$AdjustedAge <- as.factor(supportDF.invertebrates.all$AdjustedAge)
-supportDF.invertebrates.all$AdjustedAgeSex <- as.factor(supportDF.invertebrates.all$AdjustedAgeSex)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+supportDF.invertebrates.all$AgeClass <- as.factor(supportDF.invertebrates.all$AgeClass)
+supportDF.invertebrates.all$AgeSex <- as.factor(supportDF.invertebrates.all$AgeSex)
 supportDF.invertebrates.all$Month_Yr <- format(as.Date(supportDF.invertebrates.all$Date), "%Y-%m") #adding a month-year column
 supportDF.invertebrates.all$Year <- format(as.Date(supportDF.invertebrates.all$Date), "%Y") #adding a year column
 supportDF.invertebrates.all$SexClass <- factor(supportDF.invertebrates.all$SexClass, levels = c("female", "male"))
@@ -1502,8 +1534,7 @@ supportDF.invertebrates.all <- supportDF.invertebrates.all %>%
                            group_by(Rotation, Animal) %>%
                            summarise(Month_Yr = mode(Month_Yr),
                                      SexClass = unique(SexClass),
-                                     AgeClass = mode(AdjustedAge),
-                                     Group = mode(Group),
+                                     AgeClass = mode(AgeClass),
                                      MeanTempMax = mean(TemperatureMax),
                                      MeanTempMin = mean(TemperatureMin),
                                      MeanRainfall = mean(Rainfall),
@@ -1549,9 +1580,9 @@ ggsave(plot = raw.ground.invert.plot, filename = "~/Desktop/Manuscripts/Submitte
 GLMM exploring predictors of *ground use* during invertebrate foraging
 
 ```{r}
-groundUse.invert.model <- glmer(GroundScans ~ AdjustedAge +
+groundUse.invert.model <- glmer(GroundScans ~ AgeClass +
                                       SexClass +
-                                      (AdjustedAge*SexClass) +
+                                      (AgeClass*SexClass) +
                                       MeanRainfall +
                                       #MeanTempMax +
                                       #MonthlyFruitBiomass_kg_ha +
@@ -1587,7 +1618,8 @@ plot_model(groundUse.invert.model.zi,
            title = "",
            group.terms = c(1,1,1,2,3,3,3),
            colors = c("mediumpurple2", "orange", "burlywood4")) +
-           ylab("\nIncidence Rate Ratios\n)Ground Use Scan Frequency during\nInvertebrate Foraging per Rotation\n") +
+           ylab("\nGround Use during\nInvertebrate Foraging\n(Incidence Rate Ratios)\n") +
+           ylim(0.01,40) +
            theme_minimal() -> groundUse.invert.model.zi.plot; groundUse.invert.model.zi.plot
 
 ggsave(plot = groundUse.invert.model.zi.plot, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.pdf", width = 6, height = 4)
@@ -1604,12 +1636,13 @@ ggsave(plot = groundUse.invert.model.zi.plot.SI, filename = "~/Desktop/Manuscrip
 
 groundUse.invert.model.zi.plot.PredictedScans <- plot_model(groundUse.invert.model.zi, 
            type = "int", 
+           dodge = 0.25,
            mdrt.values = "meansd",
            title = "",
            colors = c("mediumpurple2", "orange")) +
            xlab("") +
-           ylab("\nPredicted Counts\n(Ground Use Scans\nduring Invertebrate Foraging per Rotation\n") +
-           ylim(0,1) +
+           ylab("\nGround Use during\nInvertebrate Foraging\n(Predicted Scans per Rotation)\n") +
+           ylim(0,.6) +
            scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
                             labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
            theme_minimal() +
@@ -1620,9 +1653,9 @@ ggsave(plot = groundUse.invert.model.zi.plot.PredictedScans, filename = "~/Deskt
 
 combined_ground_inv <- ggarrange(groundUse.invert.model.zi.plot, groundUse.invert.model.zi.plot.PredictedScans,
                                  labels = c("A", "B"),
-                                 ncol = 2, nrow = 1)
+                                 ncol = 2, nrow = 1) ; combined_ground_inv
 
-ggsave(plot = combined_ground_inv, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/combined_ground_inv.pdf", width = 10, height = 4)
+ggsave(plot = combined_ground_inv, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/Figure4_NicheDiff.pdf", width = 12, height = 4)
 ```
 
 Ground use during fruit foraging
@@ -1632,11 +1665,13 @@ For the horizontal and branch use datasets, we filtered to at least 2 branch sca
 Pre-filtering for ground use during fruit foraging 
 
 ```{r}
-supportDF.fruit.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays.csv")) 
+supportDF.fruit.all <- as.data.frame(read.csv("~/Desktop/Manuscripts/Submitted/NicheDifferentiation/SupportingDocs/IndividHabitatFruitScansXDays_Dryad.csv")) 
 
-supportDF.fruit.all$Group <- as.factor(supportDF.fruit.all$Group)
-supportDF.fruit.all$AdjustedAge <- as.factor(supportDF.fruit.all$AdjustedAge)
-supportDF.fruit.all$AdjustedAgeSex <- as.factor(supportDF.fruit.all$AdjustedAgeSex)
+#Dryad DOI
+#DOI https://doi.org/10.5061/dryad.q2bvq83jc
+
+supportDF.fruit.all$AgeClass <- as.factor(supportDF.fruit.all$AgeClass)
+supportDF.fruit.all$AgeSex <- as.factor(supportDF.fruit.all$AgeSex)
 supportDF.fruit.all$Month_Yr <- format(as.Date(supportDF.fruit.all$Date), "%Y-%m") #adding a month-year column
 supportDF.fruit.all$Year <- format(as.Date(supportDF.fruit.all$Date), "%Y") #adding a year column
 supportDF.fruit.all$SexClass <- factor(supportDF.fruit.all$SexClass, levels = c("female", "male"))
@@ -1656,8 +1691,7 @@ supportDF.fruit.all <- supportDF.fruit.all %>%
                            group_by(Rotation, Animal) %>%
                            summarise(Month_Yr = mode(Month_Yr),
                                      SexClass = unique(SexClass),
-                                     AgeClass = mode(AdjustedAge),
-                                     Group = mode(Group),
+                                     AgeClass = mode(AgeClass),
                                      MeanTempMax = mean(TemperatureMax),
                                      MeanTempMin = mean(TemperatureMin),
                                      MeanRainfall = mean(Rainfall),
@@ -1691,7 +1725,7 @@ raw.ground.fruit.plot <- ggplot(data = supportDF.fruit.all, aes(x = AgeClass, y 
                          scale_x_discrete(limit = c("infant", "small immature", "large immature", "adult"),
                                           labels = c("Infant", "Small\nImmature", "Large\nImmature", "Adult")) +
                          xlab("") + 
-                         ylab("\nGround use Scans during Fruit Foraging\n(Raw Counts per Rotation )\n") +
+                         ylab("\nGround Level Fruit Foraging Scans\n(Raw Counts per Rotation)\n") +
                          geom_jitter(alpha = 5/10, height = 0, pch = 1) +
                          theme_minimal() +
                          theme(legend.position = "bottom",
@@ -1703,9 +1737,9 @@ ggsave(plot = raw.ground.fruit.plot, filename = "~/Desktop/Manuscripts/Submitted
 GLMM exploring predictors of *ground use* during fruit foraging ## does not converge
 
 ```{r}
-groundUse.fruit.model <- glmer(GroundScans ~ AdjustedAge +
+groundUse.fruit.model <- glmer(GroundScans ~ AgeClass +
                                       SexClass +
-                                      (AdjustedAge*SexClass) +
+                                      (AgeClass*SexClass) +
                                       #MeanRainfall +
                                       #MeanTempMax +
                                       #MonthlyFruitBiomass_kg_ha +
@@ -1768,5 +1802,37 @@ groundUse.invert.model.zi.plot.PredictedScans <- plot_model(groundUse.invert.mod
            theme(legend.title = element_blank()); groundUse.invert.model.zi.plot.PredictedScans
 
 ggsave(plot = groundUse.invert.model.zi.plot.PredictedScans, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/groundUse.invert.model.zi.plot.PredictedScans.pdf", width = 10, height = 4)
+```
+
+Supplemental figures
+
+```{r}
+#raw.arboreal.invert.plot
+#raw.branch.fruit.plot
+#raw.difficulty.plot
+#raw.fruit.plot
+#raw.gleaned.plot
+#raw.ground.fruit.plot
+#raw.ground.invert.plot
+#raw.SmBranch.invertebrate.plot
+#raw.upper.fruit.plot
+#raw.vert.fruit.plot
+#raw.vertical.invertebrate.plot
+
+rawFruitPlots <- ggarrange(raw.fruit.plot, raw.difficulty.plot, raw.branch.fruit.plot, raw.vert.fruit.plot, raw.upper.fruit.plot, raw.ground.fruit.plot,
+          ncol = 3, nrow = 2,
+          common.legend = TRUE,
+          legend = "bottom",
+          labels = c("A","B","C","D","E","F"))
+
+rawInvertPlots <- ggarrange(raw.gleaned.plot, raw.SmBranch.invertebrate.plot, raw.vertical.invertebrate.plot, raw.arboreal.invert.plot, raw.ground.invert.plot,
+          ncol = 3, nrow = 2,
+          common.legend = TRUE,
+          legend = "bottom",
+          labels = c("A","B","C","D","E"))
+
+ggsave(plot = rawFruitPlots, height = 8, width = 12, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/rawFruitPlots.pdf")
+
+ggsave(plot = rawInvertPlots, height = 8, width = 12, filename = "~/Desktop/Manuscripts/Submitted/NicheDifferentiation/Figures/rawInvertPlots.pdf")
 ```
 
